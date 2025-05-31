@@ -5,7 +5,7 @@ from ..utils import jwt_required
 otp_router = Blueprint("otp_router", __name__)
 
 
-@otp_router.post("/short.me/otp/email")
+@otp_router.post("/sludgify/otp/email")
 @jwt_required()
 async def user_login():
     user = request.user

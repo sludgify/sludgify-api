@@ -4,7 +4,7 @@ from ..controllers import RegisterController
 register_router = Blueprint("register_router", __name__)
 
 
-@register_router.post("/short.me/register")
+@register_router.post("/sludgify/register")
 async def user_register():
     data = request.json
     timestamp = request.timestamp
