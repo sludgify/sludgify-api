@@ -6,3 +6,4 @@ from .profile import *
 from .otp_email import *
 from .sludgify_analysis import *
 from .carbon_credit import *
+from .transaction_payment import *

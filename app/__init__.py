@@ -14,7 +14,12 @@ from .database import db
 from .celery_app import celery_init_app
 from .mail import mail
 import datetime
-from .models import AccountActiveModel, ResetPasswordModel, OtpEmailModel
+from .models import (
+    AccountActiveModel,
+    ResetPasswordModel,
+    OtpEmailModel,
+    TransactionPaymentModel,
+)
 from celery.schedules import crontab
 
 
@@ -92,6 +97,7 @@ def create_app():
         from .api.otp_email import otp_email_router
         from .api.sludgify_analysis import sludgify_analysis_router
         from .api.carbon_credit import carbon_credit_router
+        from .api.transaction_payment import transaction_payment_router
 
         app.register_blueprint(login_router)
         app.register_blueprint(register_router)
@@ -102,6 +108,7 @@ def create_app():
         app.register_blueprint(otp_email_router)
         app.register_blueprint(sludgify_analysis_router)
         app.register_blueprint(carbon_credit_router)
+        app.register_blueprint(transaction_payment_router)
 
     @app.after_request
     async def add_cors_headers(response):

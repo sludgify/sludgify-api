@@ -5,3 +5,4 @@ from .reset_password import *
 from .blacklist_token import *
 from .otp_email import *
 from .wallet_user import *
+from .transaction_payment import *
