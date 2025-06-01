@@ -19,8 +19,10 @@ from .models import (
     ResetPasswordModel,
     OtpEmailModel,
     TransactionPaymentModel,
+    WalletUserModel,
 )
-from celery.schedules import crontab
+from celery.schedules import crontab, schedule
+import asyncio
 
 
 def create_app():
@@ -63,27 +65,87 @@ def create_app():
     db.init_app(app)
     mail.init_app(app)
 
-    @celery_app.task(name="delete_token_task")
-    def delete_token_task():
+    def cancle_transaction(unique_code):
+        from .utils import TransactionPayment
+
+        transaction_payment = TransactionPayment()
+        return asyncio.run(transaction_payment.cancel_transaction(unique_code))
+
+    def check_transaction(unique_code):
+        from .utils import TransactionPayment
+
+        transaction_payment = TransactionPayment()
+        return asyncio.run(transaction_payment.check_status(unique_code))
+
+    @celery_app.task(name="update_data_every_5_minutes")
+    def update_data_every_5_minutes():
         expired_at = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
         if data_account_active := AccountActiveModel.objects.all():
             for account_active_data in data_account_active:
                 if account_active_data.expired_at <= expired_at:
                     account_active_data.delete()
+                    print(f"success delete token {account_active_data.user.email}")
         if data_reset_password := ResetPasswordModel.objects.all():
             for reset_password_data in data_reset_password:
                 if reset_password_data.expired_at <= expired_at:
                     reset_password_data.delete()
+                    print(f"success delete token {reset_password_data.user.email}")
         if data_otp_email := OtpEmailModel.objects.all():
             for otp_email_data in data_otp_email:
                 if otp_email_data.expired_at <= expired_at:
                     otp_email_data.delete()
-        return f"delete token at {int(datetime.datetime.now(datetime.timezone.utc).timestamp())}"
+                    print(f"success delete token {otp_email_data.user.email}")
+        if data_transaction_payment := TransactionPaymentModel.objects.all():
+            for transaction in data_transaction_payment:
+                try:
+                    if transaction.expired_at <= expired_at:
+                        transaction.is_remove = True
+                        transaction.save()
+                        cancle_transaction(transaction.unique_code)
+                        print(
+                            f"success cancel transaction {transaction.user.username} | {transaction.unique_code}"
+                        )
+                except:
+                    pass
+        return "clear data"
+
+    @celery_app.task(name="auto_payment")
+    def auto_payment():
+        if data_transaction_payment := TransactionPaymentModel.objects.all():
+            for transaction in data_transaction_payment:
+                try:
+                    result = check_transaction(transaction.unique_code)
+                    status = (
+                        result.get("transaction_status")
+                        if isinstance(result, dict)
+                        else None
+                    )
+                    if status == "settlement":
+                        if not transaction.is_remove:
+                            transaction.is_remove = True
+                            transaction.save()
+                            if wallet_user := WalletUserModel.objects(
+                                user=transaction.user
+                            ).first():
+                                wallet_user.wallet = (
+                                    wallet_user.wallet + transaction.amount
+                                )
+                                wallet_user.save()
+                                print(
+                                    f"success update wallet {transaction.user.username} | {transaction.unique_code}"
+                                )
+                except Exception:
+                    pass
+        return "auto payment"
 
     celery_app.conf.beat_schedule = {
         "run-every-5-minutes": {
-            "task": "delete_token_task",
+            "task": "update_data_every_5_minutes",
             "schedule": crontab(minute="*/5"),
+        },
+        "auto-payment": {
+            "task": "auto_payment",
+            "schedule": schedule(run_every=datetime.timedelta(seconds=15)),
         },
     }
 

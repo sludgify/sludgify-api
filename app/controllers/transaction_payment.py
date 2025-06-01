@@ -3,11 +3,25 @@ from ..utils import TransactionPayment
 from ..databases import TransactionPaymentDatabase
 from ..config import transaction_payment as TRANSACTION_PAYMENT
 import datetime
+import midtransclient
 
 
 class TransactionPaymentController:
     @staticmethod
     async def get_transaction_carbon_credit(user, unique_code):
+        try:
+            payment_midtrans = TransactionPayment()
+            result = await payment_midtrans.check_status(unique_code)
+        except midtransclient.error_midtrans.MidtransAPIError:
+            return (
+                jsonify(
+                    {
+                        "message": "transaction not found",
+                        "errors": {"transaction": ["NOT_FOUND"]},
+                    }
+                ),
+                404,
+            )
         if not (
             user_data := await TransactionPaymentDatabase.get(
                 "by_unique_code", unique_code=unique_code, user_id=f"{user.id}"
@@ -22,15 +36,13 @@ class TransactionPaymentController:
                 ),
                 404,
             )
-        payment_midtrans = TransactionPayment()
-        result = await payment_midtrans.check_status(unique_code)
         return (
             jsonify(
                 {
                     "message": "successfully get transaction",
                     "data": {
                         "unique_code": user_data.unique_code,
-                        "amount": result["gross_amount"],
+                        "amount": user_data.amount,
                         "created_at": user_data.created_at,
                         "expired_at": user_data.expired_at,
                         "description": user_data.description,
@@ -43,6 +55,19 @@ class TransactionPaymentController:
 
     @staticmethod
     async def cancle_transaction_carbon_credit(user, unique_code):
+        try:
+            payment_midtrans = TransactionPayment()
+            result = await payment_midtrans.check_status(unique_code)
+        except midtransclient.error_midtrans.MidtransAPIError:
+            return (
+                jsonify(
+                    {
+                        "message": "transaction not found",
+                        "errors": {"transaction": ["NOT_FOUND"]},
+                    }
+                ),
+                404,
+            )
         if not (
             user_data := await TransactionPaymentDatabase.get(
                 "by_unique_code", unique_code=unique_code, user_id=f"{user.id}"
@@ -72,7 +97,6 @@ class TransactionPaymentController:
             unique_code=unique_code,
             user_id=f"{user.id}",
         )
-        payment_midtrans = TransactionPayment()
         result = await payment_midtrans.cancel_transaction(unique_code)
         return (
             jsonify(
@@ -80,7 +104,7 @@ class TransactionPaymentController:
                     "message": "successfully cancle transaction",
                     "data": {
                         "unique_code": user_data.unique_code,
-                        "amount": result["gross_amount"],
+                        "amount": user_data.amount,
                         "created_at": user_data.created_at,
                         "expired_at": user_data.expired_at,
                         "description": user_data.description,
@@ -113,6 +137,7 @@ class TransactionPaymentController:
             f"{user.id}",
             f"top up credit dengan saldo {amount}",
             unique_code,
+            amount,
             created_at,
             int(expired_at.timestamp()),
         )

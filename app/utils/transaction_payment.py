@@ -32,18 +32,12 @@ class TransactionPayment:
         return transaction_code
 
     async def check_status(self, unique_code):
-        try:
-            transaction_status = self.api.transactions.status(unique_code)
-            return transaction_status
-        except Exception as e:
-            return e
+        transaction_status = self.api.transactions.status(unique_code)
+        return transaction_status
 
     async def cancel_transaction(self, unique_code):
-        try:
-            cancel_response = self.api.transactions.cancel(unique_code)
-            return cancel_response
-        except Exception as e:
-            return e
+        cancel_response = self.api.transactions.cancel(unique_code)
+        return cancel_response
 
     async def create_qris(self, unique_code, amount):
         order_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S +0700")

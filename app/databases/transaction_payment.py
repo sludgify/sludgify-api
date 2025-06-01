@@ -4,11 +4,12 @@ from ..models import TransactionPaymentModel, UserModel
 
 class TransactionPaymentDatabase(Database):
     @staticmethod
-    async def insert(user_id, description, unique_code, created_at, expired_at):
+    async def insert(user_id, description, unique_code, amount, created_at, expired_at):
         if user_data := UserModel.objects(id=user_id).first():
             transaction_payment_data = TransactionPaymentModel(
                 user=user_data,
                 description=description,
+                amount=amount,
                 unique_code=unique_code,
                 created_at=created_at,
                 expired_at=expired_at,
