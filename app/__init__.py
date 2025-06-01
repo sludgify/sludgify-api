@@ -91,6 +91,7 @@ def create_app():
         from .api.profile import profile_router
         from .api.otp_email import otp_email_router
         from .api.sludgify_analysis import sludgify_analysis_router
+        from .api.carbon_credit import carbon_credit_router
 
         app.register_blueprint(login_router)
         app.register_blueprint(register_router)
@@ -100,6 +101,7 @@ def create_app():
         app.register_blueprint(profile_router)
         app.register_blueprint(otp_email_router)
         app.register_blueprint(sludgify_analysis_router)
+        app.register_blueprint(carbon_credit_router)
 
     @app.after_request
     async def add_cors_headers(response):
