@@ -1,12 +1,9 @@
-from ..databases import UserDatabase, OtpEmailDatabase
+from ..databases import UserDatabase, WalletUserDatabase
 from flask import jsonify
 import mongoengine as me
 from ..utils import SendEmail
 import re
 from email_validator import validate_email
-import random
-import string
-import datetime
 
 
 class ProfileController:
@@ -188,17 +185,24 @@ class ProfileController:
 
     @staticmethod
     async def user_me(user):
+        user_wallet = await WalletUserDatabase.get("by_user_id", user_id=user.id)
         return (
             jsonify(
                 {
                     "message": "successfully get user",
                     "data": {
-                        "id": user.id,
-                        "email": user.email,
-                        "username": user.username,
-                        "created_at": user.created_at,
-                        "updated_at": user.updated_at,
-                        "is_active": user.is_active,
+                        "id": user_wallet.user.id,
+                        "email": user_wallet.user.email,
+                        "username": user_wallet.user.username,
+                        "created_at": user_wallet.user.created_at,
+                        "updated_at": user_wallet.user.updated_at,
+                        "is_active": user_wallet.user.is_active,
+                    },
+                    "wallet": {
+                        "id": user_wallet.id,
+                        "wallet": user_wallet.wallet,
+                        "created_at": user_wallet.created_at,
+                        "updated_at": user_wallet.updated_at,
                     },
                 }
             ),

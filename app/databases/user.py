@@ -1,6 +1,5 @@
 from .database import Database
-from ..models import UserModel, OtpEmailModel
-import mongoengine as me
+from ..models import UserModel, OtpEmailModel, WalletUserModel
 
 
 class UserDatabase(Database):
@@ -10,15 +9,19 @@ class UserDatabase(Database):
             username=username,
             email=email,
             password=password,
-            created_at=int(created_at),
-            updated_at=int(created_at),
+            created_at=created_at,
+            updated_at=created_at,
             provider=provider,
         )
         if provider == "google":
             user_data.is_active = True
         await user_data.unique_field()
         user_data.save()
-        return user_data
+        wallet_user_data = WalletUserModel(
+            user=user_data, created_at=created_at, updated_at=created_at
+        )
+        wallet_user_data.save()
+        return user_data, wallet_user_data
 
     @staticmethod
     async def delete(category, **kwargs):
