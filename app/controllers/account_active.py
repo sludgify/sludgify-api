@@ -12,13 +12,38 @@ class AccountActiveController:
     async def get_user_account_active_verification(token, timestamp):
         created_at = int(timestamp.timestamp())
         errors = {}
-        if not token or (isinstance(token, str) and token.isspace()):
+        if token is None or (isinstance(token, str) and token.strip() == ""):
             errors.setdefault("token", []).append("IS_REQUIRED")
         else:
             if not isinstance(token, str):
                 errors.setdefault("token", []).append("MUST_TEXT")
         if errors:
             return jsonify({"errors": errors, "message": "invalid data"}), 400
+        token_email = await TokenEmailAccountActive.get(token)
+        if not token_email:
+            return (
+                jsonify(
+                    {
+                        "errors": {"token": ["IS_INVALID"]},
+                        "message": "token invalid",
+                    }
+                ),
+                404,
+            )
+        if not (
+            user_token := await AccountActiveDatabase.get(
+                "by_token_email", token=token, created_at=created_at
+            )
+        ):
+            return (
+                jsonify(
+                    {
+                        "errors": {"token": ["IS_INVALID"]},
+                        "message": "token invalid",
+                    }
+                ),
+                404,
+            )
         if not (
             user_data := await AccountActiveDatabase.get(
                 "by_token_email", token=token, created_at=created_at
@@ -52,6 +77,7 @@ class AccountActiveController:
                         "updated_at": user_data.user.updated_at,
                         "is_active": user_data.user.is_active,
                         "provider": user_data.user.provider,
+                        "avatar": user_data.user.avatar,
                     },
                 }
             ),
@@ -62,19 +88,43 @@ class AccountActiveController:
     async def user_account_active_verification(token, otp, timestamp):
         created_at = int(timestamp.timestamp())
         errors = {}
-        if not token or (isinstance(token, str) and token.isspace()):
+        if token is None or (isinstance(token, str) and token.strip() == ""):
             errors.setdefault("token", []).append("IS_REQUIRED")
         else:
             if not isinstance(token, str):
                 errors.setdefault("token", []).append("MUST_TEXT")
-        if not otp or (isinstance(otp, str) and otp.isspace()):
+        if otp is None or (isinstance(otp, str) and otp.strip() == ""):
             errors.setdefault("otp", []).append("IS_REQUIRED")
         else:
             if not isinstance(otp, str):
                 errors.setdefault("otp", []).append("MUST_TEXT")
         if errors:
             return jsonify({"errors": errors, "message": "invalid data"}), 400
-        token_web = await TokenEmailAccountActive.get(token)
+        token_email = await TokenEmailAccountActive.get(token)
+        if not token_email:
+            return (
+                jsonify(
+                    {
+                        "errors": {"token": ["IS_INVALID"]},
+                        "message": "token invalid",
+                    }
+                ),
+                404,
+            )
+        if not (
+            user_token := await AccountActiveDatabase.get(
+                "by_token_email", token=token, created_at=created_at
+            )
+        ):
+            return (
+                jsonify(
+                    {
+                        "errors": {"token": ["IS_INVALID"]},
+                        "message": "token invalid",
+                    }
+                ),
+                404,
+            )
         if not (
             user_data := await AccountActiveDatabase.get(
                 "by_token_email_otp", token=token, otp=otp, created_at=created_at
@@ -92,7 +142,7 @@ class AccountActiveController:
         await AccountActiveDatabase.delete(
             "user_active_by_token_email",
             token=user_data.token_email,
-            user_id=token_web["user_id"],
+            user_id=token_email["user_id"],
         )
         return (
             jsonify(
@@ -113,6 +163,7 @@ class AccountActiveController:
                         "is_active": user_data.user.is_active,
                         "provider": user_data.user.provider,
                         "email": user_data.user.email,
+                        "avatar": user_data.user.avatar,
                     },
                 }
             ),
@@ -123,13 +174,38 @@ class AccountActiveController:
     async def user_account_active_information(token, timestamp):
         created_at = int(timestamp.timestamp())
         errors = {}
-        if not token or (isinstance(token, str) and token.isspace()):
+        if token is None or (isinstance(token, str) and token.strip() == ""):
             errors.setdefault("token", []).append("IS_REQUIRED")
         else:
             if not isinstance(token, str):
                 errors.setdefault("token", []).append("MUST_TEXT")
         if errors:
             return jsonify({"errors": errors, "message": "invalid data"}), 400
+        token_web = await TokenWebAccountActive.get(token)
+        if not token_web:
+            return (
+                jsonify(
+                    {
+                        "errors": {"token": ["IS_INVALID"]},
+                        "message": "token invalid",
+                    }
+                ),
+                404,
+            )
+        if not (
+            user_token := await AccountActiveDatabase.get(
+                "by_token_web", token=token, created_at=created_at
+            )
+        ):
+            return (
+                jsonify(
+                    {
+                        "errors": {"token": ["IS_INVALID"]},
+                        "message": "token invalid",
+                    }
+                ),
+                404,
+            )
         if not (
             user_data := await AccountActiveDatabase.get(
                 "by_token_web", token=token, created_at=created_at
@@ -163,6 +239,7 @@ class AccountActiveController:
                         "updated_at": user_data.user.updated_at,
                         "is_active": user_data.user.is_active,
                         "provider": user_data.user.provider,
+                        "avatar": user_data.user.avatar,
                     },
                 }
             ),
@@ -172,7 +249,7 @@ class AccountActiveController:
     @staticmethod
     async def send_account_active_email(email, timestamp):
         errors = {}
-        if not email or (isinstance(email, str) and email.isspace()):
+        if email is None or (isinstance(email, str) and email.strip() == ""):
             errors.setdefault("email", []).append("IS_REQUIRED")
         else:
             if not isinstance(email, str):
@@ -247,6 +324,8 @@ class AccountActiveController:
                         "updated_at": account_active_data.account_active.user.updated_at,
                         "is_active": account_active_data.account_active.user.is_active,
                         "provider": account_active_data.account_active.user.provider,
+                        "avatar": account_active_data.account_active.user.avatar,
+                        "email": account_active_data.account_active.user.email,
                     },
                 }
             ),

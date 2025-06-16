@@ -1,7 +1,6 @@
 from ..databases import UserDatabase, AccountActiveDatabase
-from flask import jsonify
+from flask import jsonify, url_for
 from email_validator import validate_email
-from google.auth.transport import requests
 import requests
 import re
 from ..utils import TokenEmailAccountActive, TokenWebAccountActive, SendEmail, AuthJwt
@@ -24,7 +23,9 @@ class RegisterController:
         try:
             created_at = int(timestamp.timestamp())
             errors = {}
-            if not provider or (isinstance(provider, str) and provider.isspace()):
+            if provider is None or (
+                isinstance(provider, str) and provider.strip() == ""
+            ):
                 errors.setdefault("provider", []).append("IS_REQUIRED")
             else:
                 if not isinstance(provider, str):
@@ -32,7 +33,7 @@ class RegisterController:
                 if provider not in PROVIDER.split(", "):
                     errors.setdefault("provider", []).append("IS_INVALID")
             if provider == "google":
-                if not token or (isinstance(token, str) and token.isspace()):
+                if token is None or (isinstance(token, str) and token.strip() == ""):
                     errors.setdefault("token", []).append("IS_REQUIRED")
                 else:
                     if not isinstance(token, str):
@@ -42,8 +43,20 @@ class RegisterController:
                 url = f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={token}"
                 response = requests.get(url)
                 resp = response.json()
-                username = resp["name"]
-                email = resp["email"]
+                try:
+                    username = resp["name"]
+                    email = resp["email"]
+                    avatar = resp["picture"]
+                except KeyError:
+                    return (
+                        jsonify(
+                            {
+                                "errors": {"token": ["IS_INVALID"]},
+                                "message": "invalid data",
+                            }
+                        ),
+                        400,
+                    )
                 if user_data := await UserDatabase.get("by_email", email=email):
                     return (
                         jsonify(
@@ -54,27 +67,39 @@ class RegisterController:
                         ),
                         409,
                     )
-                user_data, wallet_user = await UserDatabase.insert(
-                    provider, username, email, None, created_at
+                user_data = await UserDatabase.insert(
+                    provider, avatar, username, email, None, created_at
                 )
-                access_token = await AuthJwt.generate_jwt(user_data.id, created_at)
+                access_token = await AuthJwt.generate_jwt(f"{user_data.id}", created_at)
             else:
-                if not username or (isinstance(username, str) and username.isspace()):
+                if username is None or (
+                    isinstance(username, str) and username.strip() == ""
+                ):
                     errors.setdefault("username", []).append("IS_REQUIRED")
                 else:
                     if not isinstance(username, str):
                         errors.setdefault("username", []).append("MUST_TEXT")
-                if not email or (isinstance(email, str) and email.isspace()):
+                    if isinstance(username, str) and len(username) < 5:
+                        errors.setdefault("username", []).append("TOO_SHORT")
+                    if isinstance(username, str) and len(username) > 15:
+                        errors.setdefault("username", []).append("TOO_LONG")
+                if email is None or (isinstance(email, str) and email.strip() == ""):
                     errors.setdefault("email", []).append("IS_REQUIRED")
                 else:
                     if not isinstance(email, str):
                         errors.setdefault("email", []).append("MUST_TEXT")
+                    if isinstance(email, str) and len(email) < 6:
+                        errors.setdefault("email", []).append("TOO_SHORT")
+                    if isinstance(email, str) and len(email) > 50:
+                        errors.setdefault("email", []).append("TOO_LONG")
                     try:
                         valid = validate_email(email)
                         email = valid.email
                     except:
                         errors.setdefault("email", []).append("IS_INVALID")
-                if not password or (isinstance(password, str) and password.isspace()):
+                if password is None or (
+                    isinstance(password, str) and password.strip() == ""
+                ):
                     errors.setdefault("password", []).append("IS_REQUIRED")
                 else:
                     if not isinstance(password, str):
@@ -90,7 +115,9 @@ class RegisterController:
                     password or (isinstance(password, str) and not password.isspace())
                 ):
                     errors.setdefault("password_match", []).append("IS_MISMATCH")
-                else:
+                if isinstance(password, str) and password == confirm_password:
+                    if len(password) > 64:
+                        errors.setdefault("password_security", []).append("TOO_LONG")
                     if len(password) < 8:
                         errors.setdefault("password_security", []).append("TOO_SHORT")
                     if not re.search(r"[A-Z]", password):
@@ -105,10 +132,15 @@ class RegisterController:
                         r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]", password
                     ):
                         errors.setdefault("password_security", []).append("NO_SYMBOL")
+                    if not re.search(r"[A-Za-z]", password):
+                        errors.setdefault("password_security", []).append("NO_LETTER")
                 if errors:
                     return jsonify({"errors": errors, "message": "invalid data"}), 400
                 result_password = bcrypt.generate_password_hash(password).decode(
                     "utf-8"
+                )
+                avatar = url_for(
+                    "static", filename="images/default-avatar.webp", _external=True
                 )
                 if user_data := await UserDatabase.get("by_email", email=email):
                     return (
@@ -121,8 +153,8 @@ class RegisterController:
                         409,
                     )
             if provider != "google":
-                user_data, wallet_user = await UserDatabase.insert(
-                    provider, username, email, result_password, created_at
+                user_data = await UserDatabase.insert(
+                    provider, f"{avatar}", username, email, result_password, created_at
                 )
                 expired_at = timestamp + datetime.timedelta(minutes=5)
                 token_web = await TokenWebAccountActive.insert(
@@ -153,6 +185,8 @@ class RegisterController:
                             "updated_at": user_data.updated_at,
                             "is_active": user_data.is_active,
                             "provider": user_data.provider,
+                            "avatar": user_data.avatar,
+                            "email": user_data.email,
                         },
                         "token": {
                             "access_token": access_token,
@@ -162,5 +196,5 @@ class RegisterController:
                 ),
                 201,
             )
-        except Exception:
-            return jsonify({"message": "invalid request"}), 400
+        except Exception as e:
+            return jsonify({"message": f"{e}"}), 400

@@ -1,29 +1,30 @@
+import inspect
 from functools import wraps
 from flask import request, jsonify
 from ..utils import AuthJwt
-import asyncio
 from ..models import UserModel, BlacklistTokenModel
 
 
 def jwt_required():
-    def decorator(f):
-        async def async_handler(*args, **kwargs):
-            result = _verify_jwt()
+    def decorator(func):
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            result = _check_jwt()
             if isinstance(result, tuple):
                 return result
-            return await f(*args, **kwargs)
+            return await func(*args, **kwargs)
 
-        def sync_handler(*args, **kwargs):
-            result = _verify_jwt()
+        @wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            result = _check_jwt()
             if isinstance(result, tuple):
                 return result
-            return f(*args, **kwargs)
+            return func(*args, **kwargs)
 
-        @wraps(f)
-        def _verify_jwt():
+        def _check_jwt():
             auth_header = request.headers.get("Authorization")
-            timestamp = request.timestamp
-            if not auth_header:
+
+            if not auth_header or not auth_header.lower().startswith("bearer "):
                 return (
                     jsonify(
                         {
@@ -34,20 +35,9 @@ def jwt_required():
                     401,
                 )
 
-            parts = auth_header.split()
-            if len(parts) != 2 or parts[0].lower() != "bearer":
-                return (
-                    jsonify(
-                        {
-                            "message": "invalid authorization header",
-                            "errors": {"authorization": ["IS_INVALID"]},
-                        }
-                    ),
-                    401,
-                )
-
-            token = parts[1]
+            token = auth_header.split()[1]
             payload = AuthJwt.verify_token(token)
+
             if payload is None:
                 return (
                     jsonify(
@@ -61,6 +51,7 @@ def jwt_required():
 
             user_id = payload.get("sub")
             iat = payload.get("iat")
+
             if not user_id:
                 return (
                     jsonify(
@@ -72,7 +63,8 @@ def jwt_required():
                     401,
                 )
 
-            if not (user_data := UserModel.objects(id=user_id).first()):
+            user_data = UserModel.objects(id=user_id).first()
+            if not user_data:
                 return (
                     jsonify(
                         {
@@ -83,7 +75,7 @@ def jwt_required():
                     401,
                 )
 
-            if not iat > user_data.updated_at:
+            if not iat > user_data.updated_at and not iat == user_data.updated_at:
                 return (
                     jsonify(
                         {
@@ -94,7 +86,7 @@ def jwt_required():
                     401,
                 )
 
-            if token_blacklist := BlacklistTokenModel.objects(created_at=iat).first():
+            if BlacklistTokenModel.objects(created_at=iat).first():
                 return (
                     jsonify(
                         {
@@ -118,12 +110,8 @@ def jwt_required():
 
             request.user = user_data
             request.token = payload
+            return None
 
-            return True
-
-        if asyncio.iscoroutinefunction(f):
-            return wraps(f)(async_handler)
-        else:
-            return wraps(f)(sync_handler)
+        return async_wrapper if inspect.iscoroutinefunction(func) else sync_wrapper
 
     return decorator
