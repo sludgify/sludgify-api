@@ -1,4 +1,4 @@
-from ..databases import UserDatabase, AccountActiveDatabase
+from ..databases import UserDatabase, AccountActiveDatabase, WalletUserDatabase
 from flask import jsonify, url_for
 from email_validator import validate_email
 import requests
@@ -70,6 +70,7 @@ class RegisterController:
                 user_data = await UserDatabase.insert(
                     provider, avatar, username, email, None, created_at
                 )
+                await WalletUserDatabase.insert(f"{user_data.id}", created_at)
                 access_token = await AuthJwt.generate_jwt(f"{user_data.id}", created_at)
             else:
                 if username is None or (
@@ -156,6 +157,7 @@ class RegisterController:
                 user_data = await UserDatabase.insert(
                     provider, f"{avatar}", username, email, result_password, created_at
                 )
+                await WalletUserDatabase.insert(f"{user_data.id}", created_at)
                 expired_at = timestamp + datetime.timedelta(minutes=5)
                 token_web = await TokenWebAccountActive.insert(
                     f"{user_data.id}", int(timestamp.timestamp())

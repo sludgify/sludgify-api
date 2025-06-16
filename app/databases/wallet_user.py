@@ -4,8 +4,13 @@ from ..models import WalletUserModel, UserModel
 
 class WalletUserDatabase(Database):
     @staticmethod
-    async def insert(user_id):
-        pass
+    async def insert(user_id, created_at):
+        if user_data := UserModel.objects(id=user_id).first():
+            data_wallet = WalletUserModel(
+                user=user_data, created_at=created_at, updated_at=created_at
+            )
+            data_wallet.save()
+            return data_wallet
 
     @staticmethod
     async def get(category, **kwargs):
