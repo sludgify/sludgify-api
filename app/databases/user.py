@@ -1,10 +1,10 @@
 from .database import Database
-from ..models import UserModel, OtpEmailModel, WalletUserModel
+from ..models import UserModel, OtpEmailModel
 
 
 class UserDatabase(Database):
     @staticmethod
-    async def insert(provider, username, email, password, created_at):
+    async def insert(provider, avatar, username, email, password, created_at):
         user_data = UserModel(
             username=username,
             email=email,
@@ -12,16 +12,13 @@ class UserDatabase(Database):
             created_at=created_at,
             updated_at=created_at,
             provider=provider,
+            avatar=avatar,
         )
         if provider == "google":
             user_data.is_active = True
         await user_data.unique_field()
         user_data.save()
-        wallet_user_data = WalletUserModel(
-            user=user_data, created_at=created_at, updated_at=created_at
-        )
-        wallet_user_data.save()
-        return user_data, wallet_user_data
+        return user_data
 
     @staticmethod
     async def delete(category, **kwargs):

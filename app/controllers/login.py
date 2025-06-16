@@ -5,14 +5,12 @@ from ..databases import (
 )
 from flask import jsonify
 from email_validator import validate_email
-from google.auth.transport import requests
 import requests
 from ..utils import AuthJwt, TokenEmailAccountActive, TokenWebAccountActive, SendEmail
 import datetime
 from ..config import provider as PROVIDER
 import string
 import random
-import traceback
 
 
 class LoginController:
@@ -41,7 +39,9 @@ class LoginController:
 
         try:
             errors = {}
-            if not provider or (isinstance(provider, str) and provider.isspace()):
+            if provider is None or (
+                isinstance(provider, str) and provider.strip() == ""
+            ):
                 errors.setdefault("provider", []).append("IS_REQUIRED")
             else:
                 if not isinstance(provider, str):
@@ -50,7 +50,7 @@ class LoginController:
                     errors.setdefault("provider", []).append("IS_INVALID")
 
             if provider == "google":
-                if not token or (isinstance(token, str) and token.isspace()):
+                if token is None or (isinstance(token, str) and token.strip() == ""):
                     errors.setdefault("token", []).append("IS_REQUIRED")
                 else:
                     if not isinstance(token, str):
@@ -60,7 +60,18 @@ class LoginController:
                 url = f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={token}"
                 response = requests.get(url)
                 resp = response.json()
-                email = resp["email"]
+                try:
+                    email = resp["email"]
+                except KeyError:
+                    return (
+                        jsonify(
+                            {
+                                "errors": {"token": ["IS_INVALID"]},
+                                "message": "invalid data",
+                            }
+                        ),
+                        400,
+                    )
                 if not (user_data := await UserDatabase.get("by_email", email=email)):
                     return (
                         jsonify(
@@ -95,7 +106,7 @@ class LoginController:
                     f"{user_data.id}", int(timestamp.timestamp())
                 )
             else:
-                if not email or (isinstance(email, str) and email.isspace()):
+                if email is None or (isinstance(email, str) and email.strip() == ""):
                     errors.setdefault("email", []).append("IS_REQUIRED")
                 else:
                     if not isinstance(email, str):
@@ -105,7 +116,9 @@ class LoginController:
                         email = valid.email
                     except:
                         errors.setdefault("email", []).append("IS_INVALID")
-                if not password or (isinstance(password, str) and password.isspace()):
+                if password is None or (
+                    isinstance(password, str) and password.strip() == ""
+                ):
                     errors.setdefault("password", []).append("IS_REQUIRED")
                 else:
                     if not isinstance(password, str):
@@ -163,6 +176,7 @@ class LoginController:
                                     "is_active": user_data.is_active,
                                     "provider": user_data.provider,
                                     "email": user_data.email,
+                                    "avatar": user_data.avatar,
                                 },
                                 "token": {
                                     "access_token": None,
@@ -171,6 +185,10 @@ class LoginController:
                             }
                         ),
                         403,
+                    )
+                else:
+                    await AccountActiveDatabase.delete(
+                        "by_user_id", user_id=user_data.id
                     )
                 access_token = await AuthJwt.generate_jwt(
                     f"{user_data.id}", int(timestamp.timestamp())
@@ -193,5 +211,4 @@ class LoginController:
                 201,
             )
         except Exception:
-            traceback.print_exc()
             return jsonify({"message": "invalid request"}), 400

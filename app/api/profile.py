@@ -5,6 +5,11 @@ from ..utils import jwt_required
 profile_router = Blueprint("profile_router", __name__)
 
 
+@profile_router.get("/sludgify/default-avatar")
+async def default_avatar():
+    return await ProfileController.default_avatar()
+
+
 @profile_router.patch("/sludgify/user/username")
 @jwt_required()
 async def update_username():
