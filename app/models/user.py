@@ -2,7 +2,9 @@ import mongoengine as me
 
 
 class UserModel(me.Document):
-    username = me.StringField(required=True)
+    first_name = me.StringField(required=False)
+    last_name = me.StringField(required=False)
+    company_name = me.StringField(required=False)
     email = me.StringField(required=True, unique=True)
     password = me.StringField(required=False)
     created_at = me.IntField(required=True)
@@ -14,7 +16,11 @@ class UserModel(me.Document):
     meta = {"collection": "users"}
 
     async def unique_field(self):
-        if self.username:
-            self.username = self.username.lower()
+        if self.first_name:
+            self.first_name = self.first_name.lower()
         if self.email:
             self.email = self.email.lower()
+        if self.last_name:
+            self.last_name = self.last_name.lower()
+        if self.company_name:
+            self.company_name = self.company_name.lower()

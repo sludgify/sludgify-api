@@ -17,7 +17,7 @@ class SendEmail:
     <title>Account Active</title>
 </head>
 <body>
-    <p>Hello {user_data.username},</p>
+    <p>Hello {user_data.first_name} {user_data.last_name},</p>
     <p>Someone has requested a link to verify your account, and you can do this through the link below.</p>
     <p>your otp is {otp}.</p>
     <p>

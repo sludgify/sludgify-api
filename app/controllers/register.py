@@ -8,12 +8,21 @@ import datetime
 from ..config import provider as PROVIDER
 import random
 import string
+import traceback
 
 
 class RegisterController:
     @staticmethod
     async def user_register(
-        provider, token, username, email, password, confirm_password, timestamp
+        provider,
+        token,
+        first_name,
+        last_name,
+        company_name,
+        email,
+        password,
+        confirm_password,
+        timestamp,
     ):
         from ..bcrypt import bcrypt
 
@@ -68,22 +77,44 @@ class RegisterController:
                         409,
                     )
                 user_data = await UserDatabase.insert(
-                    provider, avatar, username, email, None, created_at
+                    provider, avatar, username, None, None, email, None, created_at
                 )
                 await WalletUserDatabase.insert(f"{user_data.id}", created_at)
                 access_token = await AuthJwt.generate_jwt(f"{user_data.id}", created_at)
             else:
-                if username is None or (
-                    isinstance(username, str) and username.strip() == ""
+                if first_name is None or (
+                    isinstance(first_name, str) and first_name.strip() == ""
                 ):
-                    errors.setdefault("username", []).append("IS_REQUIRED")
+                    errors.setdefault("first_name", []).append("IS_REQUIRED")
                 else:
-                    if not isinstance(username, str):
-                        errors.setdefault("username", []).append("MUST_TEXT")
-                    if isinstance(username, str) and len(username) < 5:
-                        errors.setdefault("username", []).append("TOO_SHORT")
-                    if isinstance(username, str) and len(username) > 15:
-                        errors.setdefault("username", []).append("TOO_LONG")
+                    if not isinstance(first_name, str):
+                        errors.setdefault("first_name", []).append("MUST_TEXT")
+                    if isinstance(first_name, str) and len(first_name) < 5:
+                        errors.setdefault("first_name", []).append("TOO_SHORT")
+                    if isinstance(first_name, str) and len(first_name) > 15:
+                        errors.setdefault("first_name", []).append("TOO_LONG")
+                if last_name is None or (
+                    isinstance(last_name, str) and last_name.strip() == ""
+                ):
+                    errors.setdefault("last_name", []).append("IS_REQUIRED")
+                else:
+                    if not isinstance(last_name, str):
+                        errors.setdefault("last_name", []).append("MUST_TEXT")
+                    if isinstance(last_name, str) and len(last_name) < 5:
+                        errors.setdefault("last_name", []).append("TOO_SHORT")
+                    if isinstance(last_name, str) and len(last_name) > 15:
+                        errors.setdefault("last_name", []).append("TOO_LONG")
+                if company_name is None or (
+                    isinstance(company_name, str) and company_name.strip() == ""
+                ):
+                    errors.setdefault("company_name", []).append("IS_REQUIRED")
+                else:
+                    if not isinstance(company_name, str):
+                        errors.setdefault("company_name", []).append("MUST_TEXT")
+                    if isinstance(company_name, str) and len(company_name) < 5:
+                        errors.setdefault("company_name", []).append("TOO_SHORT")
+                    if isinstance(company_name, str) and len(company_name) > 15:
+                        errors.setdefault("company_name", []).append("TOO_LONG")
                 if email is None or (isinstance(email, str) and email.strip() == ""):
                     errors.setdefault("email", []).append("IS_REQUIRED")
                 else:
@@ -155,7 +186,14 @@ class RegisterController:
                     )
             if provider != "google":
                 user_data = await UserDatabase.insert(
-                    provider, f"{avatar}", username, email, result_password, created_at
+                    provider,
+                    f"{avatar}",
+                    first_name,
+                    last_name,
+                    company_name,
+                    email,
+                    result_password,
+                    created_at,
                 )
                 await WalletUserDatabase.insert(f"{user_data.id}", created_at)
                 expired_at = timestamp + datetime.timedelta(minutes=5)
@@ -182,7 +220,9 @@ class RegisterController:
                         "message": "user registered successfully",
                         "data": {
                             "id": user_data.id,
-                            "username": user_data.username,
+                            "first_name": user_data.first_name,
+                            "last_name": user_data.last_name,
+                            "company_name": user_data.company_name,
                             "created_at": user_data.created_at,
                             "updated_at": user_data.updated_at,
                             "is_active": user_data.is_active,
@@ -199,4 +239,5 @@ class RegisterController:
                 201,
             )
         except Exception as e:
+            traceback.print_exc()
             return jsonify({"message": f"{e}"}), 400
