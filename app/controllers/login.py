@@ -11,6 +11,7 @@ import datetime
 from ..config import provider as PROVIDER
 import string
 import random
+import traceback
 
 
 class LoginController:
@@ -170,7 +171,9 @@ class LoginController:
                                 "message": "user not active",
                                 "data": {
                                     "id": user_data.id,
-                                    "username": user_data.username,
+                                    "first_name": user_data.first_name,
+                                    "last_name": user_data.last_name,
+                                    "company_name": user_data.company_name,
                                     "created_at": user_data.created_at,
                                     "updated_at": user_data.updated_at,
                                     "is_active": user_data.is_active,
@@ -215,4 +218,5 @@ class LoginController:
                 201,
             )
         except Exception:
+            traceback.print_exc()
             return jsonify({"message": "invalid request"}), 400
