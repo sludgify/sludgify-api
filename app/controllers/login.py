@@ -199,7 +199,11 @@ class LoginController:
                         "message": "user login successfully",
                         "data": {
                             "id": user_data.id,
-                            "username": user_data.username,
+                            "first_name": user_data.first_name,
+                            "last_name": user_data.last_name,
+                            "company_name": user_data.company_name,
+                            "email": user_data.email,
+                            "avatar": user_data.avatar,
                             "created_at": user_data.created_at,
                             "updated_at": user_data.updated_at,
                             "is_active": user_data.is_active,
