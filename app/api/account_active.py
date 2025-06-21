@@ -20,7 +20,7 @@ async def user_account_active_information(token):
     )
 
 
-@account_active_router.get("/sludgify/auth/account-active/verify/<string:token>")
+@account_active_router.get("/sludgify/auth/account-active/activation/<string:token>")
 async def get_user_account_active_verification(token):
     timestamp = request.timestamp
     return await AccountActiveController.get_user_account_active_verification(
@@ -28,7 +28,7 @@ async def get_user_account_active_verification(token):
     )
 
 
-@account_active_router.patch("/sludgify/auth/account-active/active/<string:token>")
+@account_active_router.patch("/sludgify/auth/account-active/activation/<string:token>")
 async def user_account_active_verification(token):
     json = request.json
     otp = json.get("otp", "")

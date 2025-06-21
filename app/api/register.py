@@ -8,12 +8,22 @@ register_router = Blueprint("register_router", __name__)
 async def user_register():
     data = request.json
     timestamp = request.timestamp
-    username = data.get("username", "")
+    first_name = data.get("first_name", "")
+    last_name = data.get("last_name", "")
     email = data.get("email", "")
     password = data.get("password", "")
+    company_name = data.get("company_name", "")
     confirm_password = data.get("confirm_password", "")
     provider = data.get("provider", "")
     token = data.get("token", "")
     return await RegisterController.user_register(
-        provider, token, username, email, password, confirm_password, timestamp
+        provider,
+        token,
+        first_name,
+        last_name,
+        company_name,
+        email,
+        password,
+        confirm_password,
+        timestamp,
     )

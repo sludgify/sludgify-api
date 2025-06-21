@@ -20,7 +20,9 @@ async def user_reset_password_information(token):
     )
 
 
-@reset_password_router.get("/sludgify/auth/reset-password/verify/<string:token>")
+@reset_password_router.get(
+    "/sludgify/auth/reset-password/password-changed/<string:token>"
+)
 async def get_user_reset_password_verification(token):
     timestamp = request.timestamp
     return await ResetPasswordController.get_user_reset_password_verification(
@@ -28,7 +30,9 @@ async def get_user_reset_password_verification(token):
     )
 
 
-@reset_password_router.patch("/sludgify/auth/reset-password/confirm/<string:token>")
+@reset_password_router.patch(
+    "/sludgify/auth/reset-password/password-changed/<string:token>"
+)
 async def user_reset_password_verification(token):
     timestamp = request.timestamp
     json = request.json

@@ -4,11 +4,22 @@ from ..models import UserModel, OtpEmailModel
 
 class UserDatabase(Database):
     @staticmethod
-    async def insert(provider, avatar, username, email, password, created_at):
+    async def insert(
+        provider,
+        avatar,
+        first_name,
+        last_name,
+        company_name,
+        email,
+        password,
+        created_at,
+    ):
         user_data = UserModel(
-            username=username,
+            first_name=first_name,
+            last_name=last_name,
             email=email,
             password=password,
+            company_name=company_name,
             created_at=created_at,
             updated_at=created_at,
             provider=provider,
