@@ -63,14 +63,16 @@ class ResetPasswordController:
                     "message": "successfully get reset password information",
                     "data": {
                         "id": user_data.id,
-                        "token_web": user_data.token_web,
+                        "token_email": user_data.token_email,
                         "created_at": user_data.created_at,
                         "updated_at": user_data.updated_at,
                         "expired_at": user_data.expired_at,
                     },
                     "user": {
                         "id": user_data.user.id,
-                        "username": user_data.user.username,
+                        "first_name": user_data.user.first_name,
+                        "last_name": user_data.user.last_name,
+                        "company_name": user_data.user.company_name,
                         "created_at": user_data.user.created_at,
                         "updated_at": user_data.user.updated_at,
                         "is_active": user_data.user.is_active,
@@ -174,11 +176,11 @@ class ResetPasswordController:
                 ),
                 404,
             )
-        token_web = await TokenEmailResetPassword.get(token)
+        token_email = await TokenEmailResetPassword.get(token)
         await ResetPasswordDatabase.delete(
             "user_password_by_token_email",
             token=user_data.token_email,
-            user_id=token_web["user_id"],
+            user_id=token_email["user_id"],
             new_password=result_password,
             created_at=created_at,
         )
@@ -188,14 +190,16 @@ class ResetPasswordController:
                     "message": "successfully reset password",
                     "data": {
                         "id": user_data.id,
-                        "token_web": user_data.token_web,
+                        "token_email": user_data.token_email,
                         "created_at": user_data.created_at,
                         "updated_at": user_data.updated_at,
                         "expired_at": user_data.expired_at,
                     },
                     "user": {
                         "id": user_data.user.id,
-                        "username": user_data.user.username,
+                        "first_name": user_data.user.first_name,
+                        "last_name": user_data.user.last_name,
+                        "company_name": user_data.user.company_name,
                         "created_at": user_data.user.created_at,
                         "updated_at": user_data.user.updated_at,
                         "is_active": user_data.user.is_active,
@@ -272,7 +276,9 @@ class ResetPasswordController:
                     "user": {
                         "id": user_data.user.id,
                         "email": user_data.user.email,
-                        "username": user_data.user.username,
+                        "first_name": user_data.user.first_name,
+                        "last_name": user_data.user.last_name,
+                        "company_name": user_data.user.company_name,
                         "created_at": user_data.user.created_at,
                         "updated_at": user_data.user.updated_at,
                         "is_active": user_data.user.is_active,
@@ -344,7 +350,9 @@ class ResetPasswordController:
                     },
                     "user": {
                         "id": reset_password_data.user.id,
-                        "username": reset_password_data.user.username,
+                        "first_name": reset_password_data.user.first_name,
+                        "last_name": reset_password_data.user.last_name,
+                        "company_name": reset_password_data.user.company_name,
                         "created_at": reset_password_data.user.created_at,
                         "updated_at": reset_password_data.user.updated_at,
                         "is_active": reset_password_data.user.is_active,
