@@ -159,7 +159,9 @@ class AccountActiveController:
                     },
                     "user": {
                         "id": user_data.user.id,
-                        "username": user_data.user.username,
+                        "first_name": user_data.user.first_name,
+                        "last_name": user_data.user.last_name,
+                        "company_name": user_data.user.company_name,
                         "created_at": user_data.user.created_at,
                         "updated_at": user_data.user.updated_at,
                         "is_active": user_data.user.is_active,
