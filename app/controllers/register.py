@@ -8,12 +8,17 @@ import datetime
 from ..config import provider as PROVIDER
 import random
 import string
-import traceback
+from ..serializers import UserSerializer, TokenSerializer
+from ..models import AccessTokenModel
 
 
 class RegisterController:
-    @staticmethod
+    def __init__(self):
+        self.user_seliazer = UserSerializer()
+        self.token_serializer = TokenSerializer()
+
     async def user_register(
+        self,
         provider,
         token,
         first_name,
@@ -79,8 +84,13 @@ class RegisterController:
                 user_data = await UserDatabase.insert(
                     provider, avatar, username, None, None, email, None, created_at
                 )
+                user_me = self.user_seliazer.serialize(user_data)
                 await WalletUserDatabase.insert(f"{user_data.id}", created_at)
                 access_token = await AuthJwt.generate_jwt(f"{user_data.id}", created_at)
+                access_token_model = AccessTokenModel(
+                    access_token=access_token, created_at=created_at
+                )
+                token_data = self.token_serializer.serialize(access_token_model)
             else:
                 if first_name is None or (
                     isinstance(first_name, str) and first_name.strip() == ""
@@ -195,6 +205,7 @@ class RegisterController:
                     result_password,
                     created_at,
                 )
+                user_me = self.user_seliazer.serialize(user_data)
                 await WalletUserDatabase.insert(f"{user_data.id}", created_at)
                 expired_at = timestamp + datetime.timedelta(minutes=5)
                 token_web = await TokenWebAccountActive.insert(
@@ -205,7 +216,7 @@ class RegisterController:
                 )
                 karakter = string.ascii_uppercase + string.digits
                 otp = "".join(random.choices(karakter, k=6))
-                await AccountActiveDatabase.insert(
+                token_account_active = await AccountActiveDatabase.insert(
                     email,
                     token_web,
                     token_email,
@@ -214,30 +225,18 @@ class RegisterController:
                     int(expired_at.timestamp()),
                 )
                 SendEmail.send_email_verification(user_data, token_email, otp)
+                token_data = self.token_serializer.serialize(
+                    token_account_active.account_active, token_email_is_null=True
+                )
             return (
                 jsonify(
                     {
                         "message": "user registered successfully",
-                        "data": {
-                            "id": user_data.id,
-                            "first_name": user_data.first_name,
-                            "last_name": user_data.last_name,
-                            "company_name": user_data.company_name,
-                            "created_at": user_data.created_at,
-                            "updated_at": user_data.updated_at,
-                            "is_active": user_data.is_active,
-                            "provider": user_data.provider,
-                            "avatar": user_data.avatar,
-                            "email": user_data.email,
-                        },
-                        "token": {
-                            "access_token": access_token,
-                            "token_web": token_web,
-                        },
+                        "data": user_me,
+                        "token": token_data,
                     }
                 ),
                 201,
             )
         except Exception as e:
-            traceback.print_exc()
             return jsonify({"message": f"{e}"}), 400

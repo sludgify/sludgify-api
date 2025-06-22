@@ -11,12 +11,17 @@ import datetime
 from ..config import provider as PROVIDER
 import string
 import random
-import traceback
+from ..serializers import UserSerializer, TokenSerializer
+from ..models import AccessTokenModel
 
 
 class LoginController:
+    def __init__(self):
+        self.user_seliazer = UserSerializer()
+        self.token_serializer = TokenSerializer()
+
     @staticmethod
-    async def user_logout(user, token):
+    async def user_logout(self, user, token):
         if not (
             user_token := await BlacklistTokenDatabase.insert(user.id, token["iat"])
         ):
@@ -31,8 +36,7 @@ class LoginController:
             )
         return jsonify({"message": "successfully logout"}), 201
 
-    @staticmethod
-    async def user_login(provider, token, email, password, timestamp):
+    async def user_login(self, provider, token, email, password, timestamp):
         from ..bcrypt import bcrypt
 
         token_web = None
@@ -165,26 +169,16 @@ class LoginController:
                         int(expired_at.timestamp()),
                     )
                     SendEmail.send_email_verification(user_data, token_email, otp)
+                    user_me = self.user_seliazer.serialize(user_data)
+                    token_data = self.token_serializer.serialize(
+                        token_web, token_email_is_null=True
+                    )
                     return (
                         jsonify(
                             {
                                 "message": "user not active",
-                                "data": {
-                                    "id": user_data.id,
-                                    "first_name": user_data.first_name,
-                                    "last_name": user_data.last_name,
-                                    "company_name": user_data.company_name,
-                                    "created_at": user_data.created_at,
-                                    "updated_at": user_data.updated_at,
-                                    "is_active": user_data.is_active,
-                                    "provider": user_data.provider,
-                                    "email": user_data.email,
-                                    "avatar": user_data.avatar,
-                                },
-                                "token": {
-                                    "access_token": None,
-                                    "token_web": token_web,
-                                },
+                                "data": user_me,
+                                "token": token_data,
                             }
                         ),
                         403,
@@ -196,6 +190,8 @@ class LoginController:
                 access_token = await AuthJwt.generate_jwt(
                     f"{user_data.id}", int(timestamp.timestamp())
                 )
+            token_model = AccessTokenModel(access_token, int(timestamp.timestamp()))
+            token_data = self.token_serializer.serialize(token_model)
             return (
                 jsonify(
                     {
@@ -212,11 +208,10 @@ class LoginController:
                             "is_active": user_data.is_active,
                             "provider": user_data.provider,
                         },
-                        "token": {"access_token": access_token, "token_web": token_web},
+                        "token": token_data,
                     }
                 ),
                 201,
             )
         except Exception:
-            traceback.print_exc()
             return jsonify({"message": "invalid request"}), 400

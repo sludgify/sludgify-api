@@ -1,9 +1,13 @@
 from flask import jsonify
+from ..serializers import UserSerializer
 
 
 class SludgifyAnalysisController:
-    @staticmethod
-    async def emission_comparison(user):
+    def __init__(self):
+        self.user_serializer = UserSerializer()
+
+    async def emission_comparison(self, user):
+        user_me = self.user_serializer.serialize(user)
         return (
             jsonify(
                 {
@@ -24,22 +28,14 @@ class SludgifyAnalysisController:
                             "december": 50,
                         }
                     ],
-                    "user": {
-                        "id": user.id,
-                        "username": user.username,
-                        "created_at": user.created_at,
-                        "updated_at": user.updated_at,
-                        "is_active": user.is_active,
-                        "provider": user.provider,
-                        "email": user.email,
-                    },
+                    "user": user_me,
                 }
             ),
             200,
         )
 
-    @staticmethod
-    async def management_summary(user):
+    async def management_summary(self, user):
+        user_me = self.user_serializer.serialize(user)
         return (
             jsonify(
                 {
@@ -60,57 +56,33 @@ class SludgifyAnalysisController:
                             "december": {"b3": 50, "non_b3": 100},
                         }
                     ],
-                    "user": {
-                        "id": user.id,
-                        "username": user.username,
-                        "created_at": user.created_at,
-                        "updated_at": user.updated_at,
-                        "is_active": user.is_active,
-                        "provider": user.provider,
-                        "email": user.email,
-                    },
+                    "user": user_me,
                 }
             ),
             200,
         )
 
-    @staticmethod
-    async def project_completed(user):
+    async def project_completed(self, user):
+        user_me = self.user_serializer.serialize(user)
         return (
             jsonify(
                 {
                     "message": "successfully get project completed",
                     "data": {"completed": 30, "in_progress": 5},
-                    "user": {
-                        "id": user.id,
-                        "username": user.username,
-                        "created_at": user.created_at,
-                        "updated_at": user.updated_at,
-                        "is_active": user.is_active,
-                        "provider": user.provider,
-                        "email": user.email,
-                    },
+                    "user": user_me,
                 }
             ),
             200,
         )
 
-    @staticmethod
-    async def total_sludge(user):
+    async def total_sludge(self, user):
+        user_me = self.user_serializer.serialize(user)
         return (
             jsonify(
                 {
                     "message": "successfully get total sludge",
                     "data": {"total_sludge": 23560, "percentage": 10},
-                    "user": {
-                        "id": user.id,
-                        "username": user.username,
-                        "created_at": user.created_at,
-                        "updated_at": user.updated_at,
-                        "is_active": user.is_active,
-                        "provider": user.provider,
-                        "email": user.email,
-                    },
+                    "user": user_me,
                 }
             ),
             200,
@@ -118,20 +90,13 @@ class SludgifyAnalysisController:
 
     @staticmethod
     async def emission_reductions(user):
+        user_me = UserSerializer.serialize(user)
         return (
             jsonify(
                 {
                     "message": "successfully get co2 emission reduction",
                     "data": {"total_sludge": 4712, "percentage": 8},
-                    "user": {
-                        "id": user.id,
-                        "username": user.username,
-                        "created_at": user.created_at,
-                        "updated_at": user.updated_at,
-                        "is_active": user.is_active,
-                        "provider": user.provider,
-                        "email": user.email,
-                    },
+                    "user": user_me,
                 }
             ),
             200,

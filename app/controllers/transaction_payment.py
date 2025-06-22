@@ -4,11 +4,14 @@ from ..databases import TransactionPaymentDatabase
 from ..config import transaction_payment as TRANSACTION_PAYMENT
 import datetime
 import midtransclient
+from ..serializers import UserSerializer
 
 
 class TransactionPaymentController:
-    @staticmethod
-    async def get_transaction_carbon_credit(user, unique_code):
+    def __init__(self):
+        self.user_seliazer = UserSerializer()
+
+    async def get_transaction_carbon_credit(self, user, unique_code):
         try:
             payment_midtrans = TransactionPayment()
             result = await payment_midtrans.check_status(unique_code)
@@ -36,6 +39,7 @@ class TransactionPaymentController:
                 ),
                 404,
             )
+        user_me = self.user_seliazer.serialize(user)
         return (
             jsonify(
                 {
@@ -48,13 +52,13 @@ class TransactionPaymentController:
                         "description": user_data.description,
                         "status": result["transaction_status"],
                     },
+                    "user": user_me,
                 }
             ),
             200,
         )
 
-    @staticmethod
-    async def cancle_transaction_carbon_credit(user, unique_code):
+    async def cancle_transaction_carbon_credit(self, user, unique_code):
         try:
             payment_midtrans = TransactionPayment()
             result = await payment_midtrans.check_status(unique_code)
@@ -98,6 +102,7 @@ class TransactionPaymentController:
             user_id=f"{user.id}",
         )
         result = await payment_midtrans.cancel_transaction(unique_code)
+        user_me = self.user_seliazer.serialize(user)
         return (
             jsonify(
                 {
@@ -110,13 +115,15 @@ class TransactionPaymentController:
                         "description": user_data.description,
                         "status": result["transaction_status"],
                     },
+                    "user": user_me,
                 }
             ),
             201,
         )
 
-    @staticmethod
-    async def transaction_carbon_credit(user, amount, transaction_payment, timestamp):
+    async def transaction_carbon_credit(
+        self, user, amount, transaction_payment, timestamp
+    ):
         payment_midtrans = TransactionPayment()
         errors = {}
         if transaction_payment not in TRANSACTION_PAYMENT.split(", "):
@@ -141,6 +148,7 @@ class TransactionPaymentController:
             created_at,
             int(expired_at.timestamp()),
         )
+        user_me = self.user_seliazer.serialize(user)
         if transaction_payment == "qris":
             user_payment = await payment_midtrans.create_qris(unique_code, amount)
         elif transaction_payment == "bca":
@@ -174,6 +182,7 @@ class TransactionPaymentController:
                             "expiry_time": user_payment["expiry_time"],
                             "status": user_payment["transaction_status"],
                         },
+                        "user": user_me,
                     }
                 ),
                 201,
@@ -196,6 +205,7 @@ class TransactionPaymentController:
                             "expiry_time": user_payment["expiry_time"],
                             "status": user_payment["transaction_status"],
                         },
+                        "user": user_me,
                     }
                 ),
                 201,

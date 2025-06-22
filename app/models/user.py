@@ -11,6 +11,7 @@ class UserModel(me.Document):
     updated_at = me.IntField(required=True)
     provider = me.StringField(required=True)
     avatar = me.StringField(required=True)
+    phone_number = me.StringField(required=False)
     is_active = me.BooleanField(required=False, default=False)
 
     meta = {"collection": "users"}
