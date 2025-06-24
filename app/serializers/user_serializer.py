@@ -16,6 +16,7 @@ class UserSerializer(SerializerInterface):
         updated_at_is_null: bool = False,
         is_active_is_null: bool = False,
         provider_is_null: bool = False,
+        role_is_null: bool = False,
     ) -> dict:
         data = {}
         if not id_is_null:
@@ -38,4 +39,6 @@ class UserSerializer(SerializerInterface):
             data["is_active"] = user.is_active
         if not provider_is_null:
             data["provider"] = user.provider
+        if not role_is_null:
+            data["role"] = user.role
         return data
