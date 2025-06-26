@@ -154,7 +154,8 @@ def create_app(test_config=None):
         return response
 
     @app.before_request
-    def handle_preflight():
+    async def before_request():
+        request.timestamp = datetime.datetime.now(datetime.timezone.utc)
         if request.method == "OPTIONS":
             response = make_response()
             response.headers["Access-Control-Allow-Origin"] = "*"
@@ -177,9 +178,6 @@ def create_app(test_config=None):
             429,
         )
 
-    @app.before_request
-    async def before_request():
-        request.timestamp = datetime.datetime.now(datetime.timezone.utc)
 
     @app.errorhandler(BadRequest)
     async def handle_bad_request(e):
