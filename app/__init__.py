@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 import os
 from .database import db
 from .celery_app import celery_init_app
@@ -72,11 +72,16 @@ def create_app(test_config=None):
     db.init_app(app)
     mail.init_app(app)
 
+    def limiter_key():
+        if request.method == "OPTIONS":
+            return None
+        return get_remote_address()
+
     limiter = Limiter(
-        get_remote_address,
         app=app,
         default_limits=["200 per day", "50 per hour"],
         storage_uri=celery_url,
+        key_func=limiter_key,
     )
 
     @celery_app.task(name="update_data_every_5_minutes")
@@ -147,6 +152,30 @@ def create_app(test_config=None):
         )
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
         return response
+
+    @app.before_request
+    def handle_preflight():
+        if request.method == "OPTIONS":
+            response = make_response()
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Headers"] = (
+                "Content-Type,Authorization"
+            )
+            response.headers["Access-Control-Allow-Methods"] = (
+                "GET,PUT,POST,DELETE,OPTIONS"
+            )
+            return response, 200
+
+    @app.errorhandler(429)
+    async def ratelimit_handler(e):
+        return (
+            jsonify(
+                {
+                    "message": "You have exceeded your request rate limit.",
+                }
+            ),
+            429,
+        )
 
     @app.before_request
     async def before_request():
