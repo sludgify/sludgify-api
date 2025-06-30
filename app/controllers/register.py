@@ -1,4 +1,4 @@
-from ..databases import UserDatabase, AccountActiveDatabase, WalletUserDatabase
+from ..databases import UserDatabase, AccountActiveDatabase
 from flask import jsonify, url_for
 from email_validator import validate_email
 import requests
@@ -14,20 +14,11 @@ from ..models import AccessTokenModel
 
 class RegisterController:
     def __init__(self):
-        self.user_seliazer = UserSerializer()
+        self.user_serializer = UserSerializer()
         self.token_serializer = TokenSerializer()
 
     async def user_register(
-        self,
-        provider,
-        token,
-        first_name,
-        last_name,
-        company_name,
-        email,
-        password,
-        confirm_password,
-        timestamp,
+        self, provider, token, username, email, password, confirm_password, timestamp
     ):
         from ..bcrypt import bcrypt
 
@@ -82,49 +73,24 @@ class RegisterController:
                         409,
                     )
                 user_data = await UserDatabase.insert(
-                    provider, avatar, username, None, None, email, None, created_at
+                    provider, f"{avatar}", username, email, None, created_at
                 )
-                user_me = self.user_seliazer.serialize(user_data)
-                await WalletUserDatabase.insert(f"{user_data.id}", created_at)
-                access_token = await AuthJwt.generate_jwt(f"{user_data.id}", created_at)
-                access_token_model = AccessTokenModel(
-                    access_token=access_token, created_at=created_at
-                )
-                token_data = self.token_serializer.serialize(access_token_model)
+                access_token = await AuthJwt.generate_jwt(user_data.id, created_at)
+                token_model = AccessTokenModel(access_token, int(timestamp.timestamp()))
+                token_serializer = self.token_serializer.serialize(token_model)
+                user_serializer = self.user_serializer.serialize(user_data)
             else:
-                if first_name is None or (
-                    isinstance(first_name, str) and first_name.strip() == ""
+                if username is None or (
+                    isinstance(username, str) and username.strip() == ""
                 ):
-                    errors.setdefault("first_name", []).append("IS_REQUIRED")
+                    errors.setdefault("username", []).append("IS_REQUIRED")
                 else:
-                    if not isinstance(first_name, str):
-                        errors.setdefault("first_name", []).append("MUST_TEXT")
-                    if isinstance(first_name, str) and len(first_name) < 5:
-                        errors.setdefault("first_name", []).append("TOO_SHORT")
-                    if isinstance(first_name, str) and len(first_name) > 15:
-                        errors.setdefault("first_name", []).append("TOO_LONG")
-                if last_name is None or (
-                    isinstance(last_name, str) and last_name.strip() == ""
-                ):
-                    errors.setdefault("last_name", []).append("IS_REQUIRED")
-                else:
-                    if not isinstance(last_name, str):
-                        errors.setdefault("last_name", []).append("MUST_TEXT")
-                    if isinstance(last_name, str) and len(last_name) < 5:
-                        errors.setdefault("last_name", []).append("TOO_SHORT")
-                    if isinstance(last_name, str) and len(last_name) > 15:
-                        errors.setdefault("last_name", []).append("TOO_LONG")
-                if company_name is None or (
-                    isinstance(company_name, str) and company_name.strip() == ""
-                ):
-                    errors.setdefault("company_name", []).append("IS_REQUIRED")
-                else:
-                    if not isinstance(company_name, str):
-                        errors.setdefault("company_name", []).append("MUST_TEXT")
-                    if isinstance(company_name, str) and len(company_name) < 5:
-                        errors.setdefault("company_name", []).append("TOO_SHORT")
-                    if isinstance(company_name, str) and len(company_name) > 15:
-                        errors.setdefault("company_name", []).append("TOO_LONG")
+                    if not isinstance(username, str):
+                        errors.setdefault("username", []).append("MUST_TEXT")
+                    if isinstance(username, str) and len(username) < 5:
+                        errors.setdefault("username", []).append("TOO_SHORT")
+                    if isinstance(username, str) and len(username) > 15:
+                        errors.setdefault("username", []).append("TOO_LONG")
                 if email is None or (isinstance(email, str) and email.strip() == ""):
                     errors.setdefault("email", []).append("IS_REQUIRED")
                 else:
@@ -188,7 +154,7 @@ class RegisterController:
                     return (
                         jsonify(
                             {
-                                "errors": {"user": ["ALREADY_EXISTS"]},
+                                "errors": {"user": ["IS_ALREADY"]},
                                 "message": "the user already exists",
                             }
                         ),
@@ -196,17 +162,8 @@ class RegisterController:
                     )
             if provider != "google":
                 user_data = await UserDatabase.insert(
-                    provider,
-                    f"{avatar}",
-                    first_name,
-                    last_name,
-                    company_name,
-                    email,
-                    result_password,
-                    created_at,
+                    provider, f"{avatar}", username, email, result_password, created_at
                 )
-                user_me = self.user_seliazer.serialize(user_data)
-                await WalletUserDatabase.insert(f"{user_data.id}", created_at)
                 expired_at = timestamp + datetime.timedelta(minutes=5)
                 token_web = await TokenWebAccountActive.insert(
                     f"{user_data.id}", int(timestamp.timestamp())
@@ -225,18 +182,17 @@ class RegisterController:
                     int(expired_at.timestamp()),
                 )
                 SendEmail.send_email_verification(user_data, token_email, otp)
-                token_data = self.token_serializer.serialize(
-                    token_account_active.account_active, token_email_is_null=True
-                )
+                token_serializer = self.token_serializer.serialize(token_account_active)
+                user_serializer = self.user_serializer.serialize(user_data)
             return (
                 jsonify(
                     {
                         "message": "user registered successfully",
-                        "data": user_me,
-                        "token": token_data,
+                        "data": user_serializer,
+                        "token": token_serializer,
                     }
                 ),
                 201,
             )
-        except Exception as e:
-            return jsonify({"message": f"{e}"}), 400
+        except Exception:
+            return jsonify({"message": "invalid request"}), 400

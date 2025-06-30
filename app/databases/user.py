@@ -4,26 +4,14 @@ from ..models import UserModel, OtpEmailModel
 
 class UserDatabase(Database):
     @staticmethod
-    async def insert(
-        provider,
-        avatar,
-        first_name,
-        last_name,
-        company_name,
-        email,
-        password,
-        created_at,
-    ):
+    async def insert(provider, username, email, password, created_at):
         user_data = UserModel(
-            first_name=first_name,
-            last_name=last_name,
+            username=username,
             email=email,
             password=password,
-            company_name=company_name,
             created_at=created_at,
             updated_at=created_at,
             provider=provider,
-            avatar=avatar,
         )
         if provider == "google":
             user_data.is_active = True

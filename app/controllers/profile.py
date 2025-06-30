@@ -1,5 +1,5 @@
 from ..databases import UserDatabase
-from flask import jsonify, send_from_directory
+from flask import jsonify
 from ..utils import SendEmail
 import re
 from email_validator import validate_email
@@ -8,12 +8,7 @@ from ..serializers import UserSerializer
 
 class ProfileController:
     def __init__(self):
-        self.user_seliazer = UserSerializer()
-
-    async def default_avatar(self):
-        return send_from_directory(
-            "static/images", "default-avatar.webp", mimetype="image/png"
-        )
+        self.user_serializer = UserSerializer()
 
     async def update_email(self, user, email, otp, timestamp):
         errors = {}
@@ -48,12 +43,12 @@ class ProfileController:
                 409,
             )
         SendEmail.send_email_update_email(user_data.user, user.email)
-        user_me = self.user_seliazer.serialize(user_data.user)
+        user_serializer = self.user_serializer.serialize(user_data.user)
         return (
             jsonify(
                 {
                     "message": "success update email",
-                    "data": user_me,
+                    "data": user_serializer,
                 }
             ),
             201,
@@ -113,12 +108,12 @@ class ProfileController:
                 401,
             )
         SendEmail.send_email_update_password(user_data)
-        user_me = self.user_seliazer.serialize(user_data.user)
+        user_serializer = self.user_serializer.serialize(user_data)
         return (
             jsonify(
                 {
                     "message": "successfully update password",
-                    "data": user_me,
+                    "data": user_serializer,
                 }
             ),
             201,
@@ -154,24 +149,24 @@ class ProfileController:
                 401,
             )
         SendEmail.send_email_update_username(user_data, username)
-        user_me = self.user_seliazer.serialize(user_data.user)
+        user_serializer = self.user_serializer.serialize(user_data)
         return (
             jsonify(
                 {
                     "message": "successfully update username",
-                    "data": user_me,
+                    "data": user_serializer,
                 }
             ),
             201,
         )
 
     async def user_me(self, user):
-        user_me = self.user_seliazer.serialize(user)
+        user_serializer = self.user_serializer.serialize(user)
         return (
             jsonify(
                 {
                     "message": "successfully get user",
-                    "data": user_me,
+                    "data": user_serializer,
                 }
             ),
             200,

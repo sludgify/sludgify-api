@@ -4,6 +4,4 @@ from .reset_password import *
 from .blacklist_token import *
 from .otp_email import *
 from .otp_account_active import *
-from .wallet_user import *
-from .transaction_payment import *
 from .access_token import *

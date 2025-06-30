@@ -9,7 +9,7 @@ from ..serializers import UserSerializer, TokenSerializer
 
 class ResetPasswordController:
     def __init__(self):
-        self.user_seliazer = UserSerializer()
+        self.user_serializer = UserSerializer()
         self.token_serializer = TokenSerializer()
 
     async def get_user_reset_password_verification(self, token, timestamp):
@@ -61,14 +61,14 @@ class ResetPasswordController:
                 ),
                 404,
             )
-        user_me = self.user_seliazer.serialize(user_data.user)
-        token_data = self.token_serializer.serialize(user_data)
+        user_serializer = self.user_serializer.serialize(user_data.user)
+        token_serializer = self.token_serializer.serialize(user_data)
         return (
             jsonify(
                 {
                     "message": "successfully get reset password information",
-                    "data": token_data,
-                    "user": user_me,
+                    "data": token_serializer,
+                    "user": user_serializer,
                 }
             ),
             200,
@@ -164,22 +164,22 @@ class ResetPasswordController:
                 ),
                 404,
             )
-        token_email = await TokenEmailResetPassword.get(token)
+        token_web = await TokenEmailResetPassword.get(token)
         await ResetPasswordDatabase.delete(
             "user_password_by_token_email",
             token=user_data.token_email,
-            user_id=token_email["user_id"],
+            user_id=token_web["user_id"],
             new_password=result_password,
             created_at=created_at,
         )
-        user_me = self.user_seliazer.serialize(user_data.user)
-        token_data = self.token_serializer.serialize(user_data)
+        user_serializer = self.user_serializer.serialize(user_data.user)
+        token_serializer = self.token_serializer.serialize(user_data)
         return (
             jsonify(
                 {
                     "message": "successfully reset password",
-                    "data": token_data,
-                    "user": user_me,
+                    "data": token_serializer,
+                    "user": user_serializer,
                 }
             ),
             201,
@@ -234,16 +234,16 @@ class ResetPasswordController:
                 ),
                 404,
             )
-        user_me = self.user_seliazer.serialize(user_data.user)
-        token_data = self.token_serializer.serialize(
+        token_serializer = self.token_serializer.serialize(
             user_data, token_email_is_null=True
         )
+        user_serializer = self.user_serializer.serialize(user_data.user)
         return (
             jsonify(
                 {
                     "message": "successfully get reset password information",
-                    "data": token_data,
-                    "user": user_me,
+                    "data": token_serializer,
+                    "user": user_serializer,
                 }
             ),
             200,
@@ -295,16 +295,16 @@ class ResetPasswordController:
             int(expired_at.timestamp()),
         )
         SendEmail.send_email_reset_password(user_data, token_email)
-        user_me = self.user_seliazer.serialize(reset_password_data.user)
-        token_data = self.token_serializer.serialize(
+        token_serializer = self.token_serializer.serialize(
             reset_password_data, token_email_is_null=True
         )
+        user_serializer = self.user_serializer.serialize(reset_password_data.user)
         return (
             jsonify(
                 {
                     "message": "successfully send reset password email",
-                    "data": token_data,
-                    "user": user_me,
+                    "data": token_serializer,
+                    "user": user_serializer,
                 }
             ),
             201,

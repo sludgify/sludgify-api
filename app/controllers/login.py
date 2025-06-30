@@ -17,10 +17,9 @@ from ..models import AccessTokenModel
 
 class LoginController:
     def __init__(self):
-        self.user_seliazer = UserSerializer()
+        self.user_serializer = UserSerializer()
         self.token_serializer = TokenSerializer()
 
-    @staticmethod
     async def user_logout(self, user, token):
         if not (
             user_token := await BlacklistTokenDatabase.insert(user.id, token["iat"])
@@ -110,7 +109,6 @@ class LoginController:
                 access_token = await AuthJwt.generate_jwt(
                     f"{user_data.id}", int(timestamp.timestamp())
                 )
-                user_me = self.user_seliazer.serialize(user_data)
             else:
                 if email is None or (isinstance(email, str) and email.strip() == ""):
                     errors.setdefault("email", []).append("IS_REQUIRED")
@@ -161,7 +159,7 @@ class LoginController:
                     )
                     karakter = string.ascii_uppercase + string.digits
                     otp = "".join(random.choices(karakter, k=6))
-                    await AccountActiveDatabase.insert(
+                    token_account_active = await AccountActiveDatabase.insert(
                         email,
                         token_web,
                         token_email,
@@ -170,16 +168,16 @@ class LoginController:
                         int(expired_at.timestamp()),
                     )
                     SendEmail.send_email_verification(user_data, token_email, otp)
-                    user_me = self.user_seliazer.serialize(user_data)
-                    token_data = self.token_serializer.serialize(
-                        token_web, token_email_is_null=True
+                    user_serializer = self.user_serializer.serialize(user_data)
+                    token_serializer = self.token_serializer.serialize(
+                        token_account_active, token_email_is_null=True
                     )
                     return (
                         jsonify(
                             {
                                 "message": "user not active",
-                                "data": user_me,
-                                "token": token_data,
+                                "data": user_serializer,
+                                "token": token_serializer,
                             }
                         ),
                         403,
@@ -191,15 +189,17 @@ class LoginController:
                 access_token = await AuthJwt.generate_jwt(
                     f"{user_data.id}", int(timestamp.timestamp())
                 )
-                user_me = self.user_seliazer.serialize(user_data)
-            token_model = AccessTokenModel(access_token, int(timestamp.timestamp()))
-            token_data = self.token_serializer.serialize(token_model)
+                token_model = AccessTokenModel(
+                    access_token, created_at=int(timestamp.timestamp())
+                )
+            token_serializer = self.token_serializer.serialize(token_model)
+            user_serializer = self.user_serializer.serialize(user_data)
             return (
                 jsonify(
                     {
                         "message": "user login successfully",
-                        "data": user_me,
-                        "token": token_data,
+                        "data": user_serializer,
+                        "token": token_serializer,
                     }
                 ),
                 201,
