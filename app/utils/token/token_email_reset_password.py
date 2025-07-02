@@ -1,13 +1,13 @@
 from .token import Token
 from itsdangerous.url_safe import URLSafeSerializer
-from ..config import salt_account_active_web, secret_key_account_active_web
+from ...config import salt_reset_password_email, secret_key_reset_password_email
 
 
-class TokenWebAccountActive(Token):
+class TokenEmailResetPassword(Token):
     @staticmethod
     async def insert(user_id, created_at):
         s = URLSafeSerializer(
-            secret_key_account_active_web, salt=salt_account_active_web
+            secret_key_reset_password_email, salt=salt_reset_password_email
         )
         token = s.dumps({"user_id": user_id, "created_at": created_at})
         return token
@@ -15,7 +15,7 @@ class TokenWebAccountActive(Token):
     @staticmethod
     async def get(token):
         s = URLSafeSerializer(
-            secret_key_account_active_web, salt=salt_account_active_web
+            secret_key_reset_password_email, salt=salt_reset_password_email
         )
         try:
             s.loads(token)["user_id"]
