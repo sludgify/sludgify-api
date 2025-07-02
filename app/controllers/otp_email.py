@@ -24,7 +24,6 @@ class OtpEmailController:
                 jsonify(
                     {
                         "message": "invalid or expired token",
-                        "errors": {"token": ["IS_INVALID"]},
                     }
                 ),
                 401,

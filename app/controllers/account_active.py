@@ -28,7 +28,6 @@ class AccountActiveController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
                         "message": "token invalid",
                     }
                 ),
@@ -42,7 +41,6 @@ class AccountActiveController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
                         "message": "token invalid",
                     }
                 ),
@@ -56,7 +54,6 @@ class AccountActiveController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
                         "message": "token invalid",
                     }
                 ),
@@ -95,7 +92,6 @@ class AccountActiveController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
                         "message": "token invalid",
                     }
                 ),
@@ -109,7 +105,6 @@ class AccountActiveController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
                         "message": "token invalid",
                     }
                 ),
@@ -123,7 +118,6 @@ class AccountActiveController:
             return (
                 jsonify(
                     {
-                        "errors": {"otp": ["IS_INVALID"]},
                         "message": "you have entered an invalid OTP",
                     }
                 ),
@@ -162,7 +156,6 @@ class AccountActiveController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
                         "message": "token invalid",
                     }
                 ),
@@ -176,7 +169,6 @@ class AccountActiveController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
                         "message": "token invalid",
                     }
                 ),
@@ -190,7 +182,6 @@ class AccountActiveController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
                         "message": "token invalid",
                     }
                 ),
@@ -227,16 +218,13 @@ class AccountActiveController:
             return jsonify({"errors": errors, "message": "invalid data"}), 400
         if not (user_data := await UserDatabase.get("by_email", email=email)):
             return (
-                jsonify(
-                    {"errors": {"user": ["NOT_FOUND"]}, "message": "email not found"}
-                ),
+                jsonify({"message": "email not found"}),
                 404,
             )
         if user_data.provider != "auth_internal":
             return (
                 jsonify(
                     {
-                        "errors": {"user": ["NOT_FOUND"]},
                         "message": "email not found",
                     }
                 ),
@@ -246,7 +234,6 @@ class AccountActiveController:
             return (
                 jsonify(
                     {
-                        "errors": {"user": ["IS_ACTIVE"]},
                         "message": "your account is active",
                     }
                 ),

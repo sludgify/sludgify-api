@@ -29,7 +29,6 @@ class LoginController:
                 jsonify(
                     {
                         "message": "invalid or expired token",
-                        "errors": {"token": ["IS_INVALID"]},
                     }
                 ),
                 401,
@@ -37,7 +36,7 @@ class LoginController:
         return jsonify({"message": "successfully logout"}), 201
 
     async def user_login(self, provider, token, email, password, timestamp):
-        from ..bcrypt import bcrypt
+        from ..extensions import bcrypt
 
         token_web = None
         access_token = None
@@ -81,7 +80,6 @@ class LoginController:
                     return (
                         jsonify(
                             {
-                                "errors": {"user": ["NOT_FOUND"]},
                                 "message": "you are not registered",
                             }
                         ),
@@ -91,7 +89,6 @@ class LoginController:
                     return (
                         jsonify(
                             {
-                                "errors": {"user": ["NOT_ACTIVE"]},
                                 "message": "user is not active",
                             }
                         ),
@@ -101,7 +98,6 @@ class LoginController:
                     return (
                         jsonify(
                             {
-                                "errors": {"user": ["NOT_FOUND"]},
                                 "message": "you are not registered",
                             }
                         ),
@@ -135,7 +131,6 @@ class LoginController:
                     return (
                         jsonify(
                             {
-                                "errors": {"user": ["NOT_FOUND"]},
                                 "message": "invalid email or password",
                             }
                         ),
@@ -145,7 +140,6 @@ class LoginController:
                     return (
                         jsonify(
                             {
-                                "errors": {"user": ["NOT_FOUND"]},
                                 "message": "invalid email or password",
                             }
                         ),

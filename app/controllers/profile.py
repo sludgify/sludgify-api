@@ -41,11 +41,11 @@ class ProfileController:
             return (
                 jsonify(
                     {
+                        "errors": {"otp": ["IS_INVALID"]},
                         "message": "invalid otp",
-                        "errors": {"token": ["IS_INVALID"]},
                     }
                 ),
-                409,
+                400,
             )
         SendEmail.send_email_update_email(user_data.user, user.email)
         user_me = self.user_seliazer.serialize(user_data.user)
@@ -60,7 +60,7 @@ class ProfileController:
         )
 
     async def update_password(self, user, password, confirm_password, timestamp):
-        from ..bcrypt import bcrypt
+        from ..extensions import bcrypt
 
         errors = {}
         if password is None or (isinstance(password, str) and password.strip() == ""):
@@ -107,7 +107,6 @@ class ProfileController:
                 jsonify(
                     {
                         "message": "invalid or expired token",
-                        "errors": {"token": ["IS_INVALID"]},
                     }
                 ),
                 401,
@@ -148,7 +147,6 @@ class ProfileController:
                 jsonify(
                     {
                         "message": "invalid or expired token",
-                        "errors": {"token": ["IS_INVALID"]},
                     }
                 ),
                 401,

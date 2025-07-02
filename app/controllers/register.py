@@ -29,7 +29,7 @@ class RegisterController:
         confirm_password,
         timestamp,
     ):
-        from ..bcrypt import bcrypt
+        from ..extensions import bcrypt
 
         access_token = None
         token_web = None
@@ -65,7 +65,6 @@ class RegisterController:
                     return (
                         jsonify(
                             {
-                                "errors": {"token": ["IS_INVALID"]},
                                 "message": "invalid data",
                             }
                         ),
@@ -75,7 +74,6 @@ class RegisterController:
                     return (
                         jsonify(
                             {
-                                "errors": {"user": ["USER_ALREADY_EXISTS"]},
                                 "message": "the user already exists",
                             }
                         ),
@@ -188,7 +186,6 @@ class RegisterController:
                     return (
                         jsonify(
                             {
-                                "errors": {"user": ["ALREADY_EXISTS"]},
                                 "message": "the user already exists",
                             }
                         ),

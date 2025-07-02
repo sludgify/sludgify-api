@@ -27,7 +27,6 @@ class ResetPasswordController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
                         "message": "token invalid",
                     }
                 ),
@@ -41,7 +40,6 @@ class ResetPasswordController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
                         "message": "token invalid",
                     }
                 ),
@@ -55,8 +53,7 @@ class ResetPasswordController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
-                        "message": "user not found",
+                        "message": "token invalid",
                     }
                 ),
                 404,
@@ -77,7 +74,7 @@ class ResetPasswordController:
     async def user_reset_password_verification(
         self, token, new_password, confirm_password, timestamp
     ):
-        from ..bcrypt import bcrypt
+        from ..extensions import bcrypt
 
         created_at = int(timestamp.timestamp())
         errors = {}
@@ -130,7 +127,6 @@ class ResetPasswordController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
                         "message": "token invalid",
                     }
                 ),
@@ -144,7 +140,6 @@ class ResetPasswordController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
                         "message": "token invalid",
                     }
                 ),
@@ -158,7 +153,6 @@ class ResetPasswordController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
                         "message": "user not found",
                     }
                 ),
@@ -200,7 +194,6 @@ class ResetPasswordController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
                         "message": "token invalid",
                     }
                 ),
@@ -214,7 +207,6 @@ class ResetPasswordController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
                         "message": "token invalid",
                     }
                 ),
@@ -228,7 +220,6 @@ class ResetPasswordController:
             return (
                 jsonify(
                     {
-                        "errors": {"token": ["IS_INVALID"]},
                         "message": "user not found",
                     }
                 ),
@@ -265,16 +256,13 @@ class ResetPasswordController:
             return jsonify({"errors": errors, "message": "invalid data"}), 400
         if not (user_data := await UserDatabase.get("by_email", email=email)):
             return (
-                jsonify(
-                    {"errors": {"user": ["NOT_FOUND"]}, "message": "email not found"}
-                ),
+                jsonify({"message": "email not found"}),
                 404,
             )
         if user_data.provider != "auth_internal":
             return (
                 jsonify(
                     {
-                        "errors": {"user": ["NOT_FOUND"]},
                         "message": "email not found",
                     }
                 ),

@@ -20,7 +20,6 @@ class TransactionPaymentController:
                 jsonify(
                     {
                         "message": "transaction not found",
-                        "errors": {"transaction": ["NOT_FOUND"]},
                     }
                 ),
                 404,
@@ -34,7 +33,6 @@ class TransactionPaymentController:
                 jsonify(
                     {
                         "message": "transaction not found",
-                        "errors": {"transaction": ["NOT_FOUND"]},
                     }
                 ),
                 404,
@@ -81,7 +79,6 @@ class TransactionPaymentController:
                 jsonify(
                     {
                         "message": "transaction not found",
-                        "errors": {"transaction": ["NOT_FOUND"]},
                     }
                 ),
                 404,
@@ -91,7 +88,6 @@ class TransactionPaymentController:
                 jsonify(
                     {
                         "message": "transaction already cancle",
-                        "errors": {"transaction": ["ALREADY_CANCLE"]},
                     }
                 ),
                 409,
