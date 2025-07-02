@@ -28,10 +28,3 @@ def register_tasks(celery_app):
             "schedule": crontab(minute="*/5"),
         },
     }
-
-    @celery_app.task(name="send_email_task")
-    def send_email_task(subject, recipients, body):
-        from ..utils import send_email
-
-        send_email(subject, recipients, body)
-        return f"send email {subject} to {recipients}"
