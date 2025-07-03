@@ -103,7 +103,7 @@ class LoginController:
                         ),
                         401,
                     )
-                access_token = await AuthJwt.generate_jwt(
+                access_token = await AuthJwt.generate_jwt_async(
                     f"{user_data.id}", int(timestamp.timestamp())
                 )
                 user_me = self.user_seliazer.serialize(user_data)
@@ -182,7 +182,7 @@ class LoginController:
                     await AccountActiveDatabase.delete(
                         "by_user_id", user_id=user_data.id
                     )
-                access_token = await AuthJwt.generate_jwt(
+                access_token = await AuthJwt.generate_jwt_async(
                     f"{user_data.id}", int(timestamp.timestamp())
                 )
                 user_me = self.user_seliazer.serialize(user_data)

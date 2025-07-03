@@ -84,7 +84,9 @@ class RegisterController:
                 )
                 user_me = self.user_seliazer.serialize(user_data)
                 await WalletUserDatabase.insert(f"{user_data.id}", created_at)
-                access_token = await AuthJwt.generate_jwt(f"{user_data.id}", created_at)
+                access_token = await AuthJwt.generate_jwt_async(
+                    f"{user_data.id}", created_at
+                )
                 access_token_model = AccessTokenModel(
                     access_token=access_token, created_at=created_at
                 )

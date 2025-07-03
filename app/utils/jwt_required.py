@@ -36,7 +36,7 @@ def jwt_required():
                 )
 
             token = auth_header.split()[1]
-            payload = AuthJwt.verify_token(token)
+            payload = AuthJwt.verify_token_sync(token)
 
             if payload is None:
                 return (

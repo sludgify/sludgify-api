@@ -1,10 +1,13 @@
-from flask import Flask
+from flask import Flask, render_template
 from .celery_app import celery_init_app
+import cloudinary
 
 
 def create_app(test_config=None):
     import os
     from .config import Config
+
+    chat_data = {}
 
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -29,12 +32,20 @@ def create_app(test_config=None):
 
     register_tasks(celery_app)
 
-    from .extensions import db, mail, bcrypt, limiter
+    from .extensions import db, mail, bcrypt, limiter, socket_io
 
     bcrypt.init_app(app)
     db.init_app(app)
     mail.init_app(app)
     limiter.init_app(app)
+    socket_io.init_app(app)
+
+    cloudinary.config(
+        secure=True,
+        api_secret="Y1A_TWPWLXoDRecIeMIHr-MwFM8",
+        api_key="924953933435377",
+        cloud_name="ducs7evff",
+    )
 
     from .utils import load_key_pair
 
@@ -48,5 +59,13 @@ def create_app(test_config=None):
     register_blueprints(app)
     register_error_handlers(app)
     register_middlewares(app)
+
+    @app.route("/chat")
+    def chat():
+        return render_template("index.html", messages=chat_data)
+
+    from .sockets import register_socketio_events
+
+    register_socketio_events(socket_io, chat_data)
 
     return app

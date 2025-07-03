@@ -5,7 +5,6 @@ class Config:
     CELERY = {
         "broker_url": celery_broker_url,
         "result_backend": celery_result_backend,
-        "task_ignore_result": True,
     }
 
     MONGODB_SETTINGS = {

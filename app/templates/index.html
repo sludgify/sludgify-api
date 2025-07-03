@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chat with JWT Auth + Download Buttons</title>
+  <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
+</head>
+<body>
+
+<h2>Login</h2>
+<input id="email" placeholder="Email" />
+<input id="password" placeholder="Password" type="password" />
+<button onclick="doLogin()">Login</button>
+
+<div id="chat" style="display:none;">
+  <h3>Room: default</h3>
+  <div id="messages" style="border:1px solid #ccc; height:200px; overflow:auto; padding:5px;"></div>
+  <input id="inputMsg" placeholder="Type message..." />
+  <button onclick="sendMessage()">Send</button>
+</div>
+
+<script>
+  let socket;
+  let token;
+
+  async function doLogin() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    const res = await fetch('/sludgify/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email, password, provider: 'auth_internal'})
+    });
+
+    const data = await res.json();
+    if (data.token) {
+      token = data.token.access_token;
+      startChat();
+    } else {
+      alert('Login failed: ' + (data.error || 'Unknown error'));
+    }
+  }
+
+  function startChat() {
+    document.getElementById('chat').style.display = 'block';
+    socket = io();
+
+    socket.on('connect', () => {
+      socket.emit('join', {room: 'default', token});
+    });
+
+    socket.on('chat_history', (messages) => {
+      const messagesDiv = document.getElementById('messages');
+      messagesDiv.innerHTML = '';
+      messages.forEach(msg => {
+        // Jika msg berbentuk objek (payload)
+        if (typeof msg === 'object' && msg.message) {
+          addMessageWithLinks(msg);
+        } else {
+          // fallback string message
+          const div = document.createElement('div');
+          div.textContent = msg;
+          messagesDiv.appendChild(div);
+        }
+      });
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+
+    socket.on('message', (msg) => {
+      const messagesDiv = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.textContent = msg;
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+
+    socket.on('message_with_links', (data) => {
+      addMessageWithLinks(data);
+    });
+
+    socket.on('disconnect', () => {
+      alert('Disconnected from server');
+    });
+  }
+
+  function addMessageWithLinks(data) {
+  const messagesDiv = document.getElementById('messages');
+
+  const messageTextDiv = document.createElement('div');
+  messageTextDiv.textContent = `${data.username}: ${data.message}`;
+  messagesDiv.appendChild(messageTextDiv);
+
+  if (data.links && data.links.length > 0) {
+    data.links.forEach((link, i) => {
+      const btn = document.createElement('button');
+      btn.textContent = `Download File ${i + 1}`;
+      btn.style.margin = '4px';
+      btn.onclick = () => {
+        window.open(link, '_blank');
+      };
+      messagesDiv.appendChild(btn);
+    });
+  }
+
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+
+  function sendMessage() {
+    const input = document.getElementById('inputMsg');
+    const msg = input.value;
+    if (msg && socket) {
+      socket.emit('message', {room: 'default', msg, token});
+      input.value = '';
+    }
+  }
+</script>
+
+</body>
+</html>

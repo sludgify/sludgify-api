@@ -4,10 +4,12 @@ from flask_bcrypt import Bcrypt
 from flask_limiter import Limiter
 from .config import celery_url
 from .utils import limiter_key
+from flask_socketio import SocketIO
 
 db = MongoEngine()
 mail = Mail()
 bcrypt = Bcrypt()
+socket_io = SocketIO(cors_allowed_origins="*", async_mode="threading")
 
 limiter = Limiter(
     key_func=limiter_key,

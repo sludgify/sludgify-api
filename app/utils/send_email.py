@@ -1,10 +1,11 @@
-from ..task import send_email_task
 from ..config import web_short_me
 
 
 class SendEmail:
     @staticmethod
     def send_email_verification(user_data, token_email, otp):
+        from ..tasks import send_email_task
+
         send_email_task.apply_async(
             args=[
                 "Account Active",
@@ -34,6 +35,8 @@ class SendEmail:
 
     @staticmethod
     def send_email_reset_password(user_data, token_email):
+        from ..tasks import send_email_task
+
         send_email_task.apply_async(
             args=[
                 "Reset Password",
@@ -62,6 +65,8 @@ class SendEmail:
 
     @staticmethod
     def send_email_update_username(user_data, username):
+        from ..tasks import send_email_task
+
         send_email_task.apply_async(
             args=[
                 "Update Username",
@@ -84,6 +89,8 @@ class SendEmail:
 
     @staticmethod
     def send_email_update_password(user_data):
+        from ..tasks import send_email_task
+
         send_email_task.apply_async(
             args=[
                 "Update Password",
@@ -106,6 +113,8 @@ class SendEmail:
 
     @staticmethod
     def send_email_otp(user_data, otp):
+        from ..tasks import send_email_task
+
         send_email_task.apply_async(
             args=[
                 "Otp Update Email",
@@ -128,6 +137,8 @@ class SendEmail:
 
     @staticmethod
     def send_email_update_email(user_data, email):
+        from ..tasks import send_email_task
+
         send_email_task.apply_async(
             args=[
                 "Update Email",
