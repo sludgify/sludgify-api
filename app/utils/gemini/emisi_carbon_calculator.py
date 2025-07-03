@@ -91,14 +91,3 @@ Kalimat: """
             raise ValueError("Input tidak dikenali, mohon gunakan format yang jelas.")
 
         return self._calculate_emisi(metode, massa, prompt)
-
-
-calculator = EmisiCarbonCalculator(api_key="YOUR_API_KEY")
-
-try:
-    result = calculator.process(
-        "Saya ingin hitung emisi untuk 2.5 ton lumpur dengan metode maggot"
-    )
-    print(result)
-except Exception as e:
-    print("Error:", str(e))
