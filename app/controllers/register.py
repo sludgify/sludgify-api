@@ -5,7 +5,7 @@ import requests
 import re
 from ..utils import TokenEmailAccountActive, TokenWebAccountActive, SendEmail, AuthJwt
 import datetime
-from ..config import provider as PROVIDER
+from ..config import provider as PROVIDER, web_short_me
 import random
 import string
 from ..serializers import UserSerializer, TokenSerializer
@@ -223,7 +223,30 @@ class RegisterController:
                     int(timestamp.timestamp()),
                     int(expired_at.timestamp()),
                 )
-                SendEmail.send_email_verification(user_data, token_email, otp)
+                SendEmail.send_email(
+                    "Verification Your Account",
+                    [user_data.email],
+                    f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Active</title>
+</head>
+<body>
+    <p>Hello {user_data.email},</p>
+    <p>Someone has requested a link to verify your account, and you can do this through the link below.</p>
+    <p>your otp is {otp}.</p>
+    <p>
+        <a href="{web_short_me}/account-active?token={token_email}">
+            Click here to activate your account
+        </a>
+    </p>
+    <p>If you didn't request this, please ignore this email.</p>
+</body>
+</html>
+                """,
+                )
                 token_data = self.token_serializer.serialize(
                     token_account_active.account_active, token_email_is_null=True
                 )

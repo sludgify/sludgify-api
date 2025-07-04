@@ -6,6 +6,7 @@ import datetime
 import string
 import random
 from ..serializers import UserSerializer, TokenSerializer
+from ..config import web_short_me
 
 
 class AccountActiveController:
@@ -22,7 +23,7 @@ class AccountActiveController:
             if not isinstance(token, str):
                 errors.setdefault("token", []).append("MUST_TEXT")
         if errors:
-            return jsonify({"errors": errors, "message": "invalid data"}), 400
+            return jsonify({"errors": errors, "message": "validation errors"}), 400
         token_email = await TokenEmailAccountActive.get(token)
         if not token_email:
             return (
@@ -86,7 +87,7 @@ class AccountActiveController:
             if not isinstance(otp, str):
                 errors.setdefault("otp", []).append("MUST_TEXT")
         if errors:
-            return jsonify({"errors": errors, "message": "invalid data"}), 400
+            return jsonify({"errors": errors, "message": "validation errors"}), 400
         token_email = await TokenEmailAccountActive.get(token)
         if not token_email:
             return (
@@ -150,7 +151,7 @@ class AccountActiveController:
             if not isinstance(token, str):
                 errors.setdefault("token", []).append("MUST_TEXT")
         if errors:
-            return jsonify({"errors": errors, "message": "invalid data"}), 400
+            return jsonify({"errors": errors, "message": "validation errors"}), 400
         token_web = await TokenWebAccountActive.get(token)
         if not token_web:
             return (
@@ -215,7 +216,7 @@ class AccountActiveController:
             except:
                 errors.setdefault("email", []).append("IS_INVALID")
         if errors:
-            return jsonify({"errors": errors, "message": "invalid data"}), 400
+            return jsonify({"errors": errors, "message": "validation errors"}), 400
         if not (user_data := await UserDatabase.get("by_email", email=email)):
             return (
                 jsonify({"message": "email not found"}),
@@ -256,7 +257,30 @@ class AccountActiveController:
             int(timestamp.timestamp()),
             int(expired_at.timestamp()),
         )
-        SendEmail.send_email_verification(user_data, token_email, otp)
+        SendEmail.send_email(
+            "Verification Your Account",
+            [user_data.email],
+            f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Active</title>
+</head>
+<body>
+    <p>Hello {user_data.email},</p>
+    <p>Someone has requested a link to verify your account, and you can do this through the link below.</p>
+    <p>your otp is {otp}.</p>
+    <p>
+        <a href="{web_short_me}/account-active?token={token_email}">
+            Click here to activate your account
+        </a>
+    </p>
+    <p>If you didn't request this, please ignore this email.</p>
+</body>
+</html>
+                """,
+        )
         user_me = self.user_seliazer.serialize(account_active_data.account_active.user)
         token_data = self.token_serializer.serialize(
             account_active_data.account_active, token_email_is_null=True

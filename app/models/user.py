@@ -12,6 +12,7 @@ class UserModel(me.Document):
     provider = me.StringField(required=True)
     avatar = me.StringField(required=True)
     is_active = me.BooleanField(required=False, default=False)
+    position = me.StringField(required=False)
     role = me.StringField(required=False, default="user")
     phone_number = me.StringField(required=False)
 

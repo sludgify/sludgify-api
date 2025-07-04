@@ -28,7 +28,7 @@ class ProfileController:
             except:
                 errors.setdefault("email", []).append("IS_INVALID")
         if errors:
-            return jsonify({"errors": errors, "message": "invalid data"}), 400
+            return jsonify({"errors": errors, "message": "validation errors"}), 400
         if not (
             user_data := await UserDatabase.update(
                 "email",
@@ -47,7 +47,23 @@ class ProfileController:
                 ),
                 400,
             )
-        SendEmail.send_email_update_email(user_data.user, user.email)
+        SendEmail.send_email(
+            "Update Email",
+            [email],
+            f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Email</title>
+</head>
+<body>
+    <p>Hello {user_data.username},</p>
+    <p>your email has been updated to {user_data.email}</p>
+</body>
+</html>
+                """,
+        )
         user_me = self.user_seliazer.serialize(user_data.user)
         return (
             jsonify(
@@ -93,7 +109,7 @@ class ProfileController:
             if not re.search(r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]", password):
                 errors.setdefault("password_security", []).append("NO_SYMBOL")
         if errors:
-            return jsonify({"errors": errors, "message": "invalid data"}), 400
+            return jsonify({"errors": errors, "message": "validation errors"}), 400
         result_password = bcrypt.generate_password_hash(password).decode("utf-8")
         if not (
             user_data := await UserDatabase.update(
@@ -111,8 +127,24 @@ class ProfileController:
                 ),
                 401,
             )
-        SendEmail.send_email_update_password(user_data)
-        user_me = self.user_seliazer.serialize(user_data.user)
+        SendEmail.send_email(
+            "Update Password",
+            [user.email],
+            f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Password</title>
+</head>
+<body>
+    <p>Hello {user_data.username},</p>
+    <p>your password has been updated</p>
+</body>
+</html>
+                """,
+        )
+        user_me = self.user_seliazer.serialize(user_data)
         return (
             jsonify(
                 {
@@ -123,24 +155,26 @@ class ProfileController:
             201,
         )
 
-    async def update_username(self, user, username):
+    async def update_last_name(self, user, last_name):
         errors = {}
-        if username is None or (isinstance(username, str) and username.strip() == ""):
-            errors.setdefault("username", []).append("IS_REQUIRED")
+        if last_name is None or (
+            isinstance(last_name, str) and last_name.strip() == ""
+        ):
+            errors.setdefault("last_name", []).append("IS_REQUIRED")
         else:
-            if not isinstance(username, str):
-                errors.setdefault("username", []).append("MUST_TEXT")
-            if isinstance(username, str) and len(username) < 5:
-                errors.setdefault("username", []).append("TOO_SHORT")
-            if isinstance(username, str) and len(username) > 15:
-                errors.setdefault("username", []).append("TOO_LONG")
+            if not isinstance(last_name, str):
+                errors.setdefault("last_name", []).append("MUST_TEXT")
+            if isinstance(last_name, str) and len(last_name) < 5:
+                errors.setdefault("last_name", []).append("TOO_SHORT")
+            if isinstance(last_name, str) and len(last_name) > 15:
+                errors.setdefault("last_name", []).append("TOO_LONG")
         if errors:
-            return jsonify({"errors": errors, "message": "invalid data"}), 400
+            return jsonify({"errors": errors, "message": "validation errors"}), 400
         if not (
             user_data := await UserDatabase.update(
-                "username",
+                "last_name",
                 user_id=user.id,
-                username=username,
+                last_name=last_name,
             )
         ):
             return (
@@ -151,12 +185,142 @@ class ProfileController:
                 ),
                 401,
             )
-        SendEmail.send_email_update_username(user_data, username)
-        user_me = self.user_seliazer.serialize(user_data.user)
+        SendEmail.send_email(
+            "Update Last Name",
+            [user_data.email],
+            f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Last Name</title>
+</head>
+<body>
+    <p>Hello {user_data.email},</p>
+    <p>your Last Name has been updated to {last_name}</p>
+</body>
+</html>
+                """,
+        )
+        user_me = self.user_seliazer.serialize(user_data)
         return (
             jsonify(
                 {
-                    "message": "successfully update username",
+                    "message": "successfully update last name",
+                    "data": user_me,
+                }
+            ),
+            201,
+        )
+
+    async def update_country(self, user, country):
+        errors = {}
+        if country is None or (isinstance(country, str) and country.strip() == ""):
+            errors.setdefault("country", []).append("IS_REQUIRED")
+        else:
+            if not isinstance(country, str):
+                errors.setdefault("country", []).append("MUST_TEXT")
+            if isinstance(country, str) and len(country) < 5:
+                errors.setdefault("country", []).append("TOO_SHORT")
+            if isinstance(country, str) and len(country) > 15:
+                errors.setdefault("country", []).append("TOO_LONG")
+        if errors:
+            return jsonify({"errors": errors, "message": "validation errors"}), 400
+        if not (
+            user_data := await UserDatabase.update(
+                "country",
+                user_id=user.id,
+                country=country,
+            )
+        ):
+            return (
+                jsonify(
+                    {
+                        "message": "invalid or expired token",
+                    }
+                ),
+                401,
+            )
+        SendEmail.send_email(
+            "Update Country",
+            [user_data.email],
+            f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Country</title>
+</head>
+<body>
+    <p>Hello {user_data.email},</p>
+    <p>your Country has been updated to {country}</p>
+</body>
+</html>
+                """,
+        )
+        user_me = self.user_seliazer.serialize(user_data)
+        return (
+            jsonify(
+                {
+                    "message": "successfully update country",
+                    "data": user_me,
+                }
+            ),
+            201,
+        )
+
+    async def update_first_name(self, user, first_name):
+        errors = {}
+        if first_name is None or (
+            isinstance(first_name, str) and first_name.strip() == ""
+        ):
+            errors.setdefault("first_name", []).append("IS_REQUIRED")
+        else:
+            if not isinstance(first_name, str):
+                errors.setdefault("first_name", []).append("MUST_TEXT")
+            if isinstance(first_name, str) and len(first_name) < 5:
+                errors.setdefault("first_name", []).append("TOO_SHORT")
+            if isinstance(first_name, str) and len(first_name) > 15:
+                errors.setdefault("first_name", []).append("TOO_LONG")
+        if errors:
+            return jsonify({"errors": errors, "message": "validation errors"}), 400
+        if not (
+            user_data := await UserDatabase.update(
+                "first_name",
+                user_id=user.id,
+                first_name=first_name,
+            )
+        ):
+            return (
+                jsonify(
+                    {
+                        "message": "invalid or expired token",
+                    }
+                ),
+                401,
+            )
+        SendEmail.send_email(
+            "Update First Name",
+            [user_data.email],
+            f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update First Name</title>
+</head>
+<body>
+    <p>Hello {user_data.email},</p>
+    <p>your First Name has been updated to {first_name}</p>
+</body>
+</html>
+                """,
+        )
+        user_me = self.user_seliazer.serialize(user_data)
+        return (
+            jsonify(
+                {
+                    "message": "successfully update first name",
                     "data": user_me,
                 }
             ),

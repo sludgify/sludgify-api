@@ -29,7 +29,6 @@ def jwt_required():
                     jsonify(
                         {
                             "message": "invalid authorization header",
-                            "errors": {"authorization": ["IS_INVALID"]},
                         }
                     ),
                     401,
@@ -43,7 +42,6 @@ def jwt_required():
                     jsonify(
                         {
                             "message": "invalid or expired token",
-                            "errors": {"token": ["IS_INVALID"]},
                         }
                     ),
                     401,
@@ -57,7 +55,6 @@ def jwt_required():
                     jsonify(
                         {
                             "message": "invalid or expired token",
-                            "errors": {"token": ["IS_INVALID"]},
                         }
                     ),
                     401,
@@ -69,7 +66,6 @@ def jwt_required():
                     jsonify(
                         {
                             "message": "invalid or expired token",
-                            "errors": {"token": ["IS_INVALID"]},
                         }
                     ),
                     401,
@@ -80,7 +76,6 @@ def jwt_required():
                     jsonify(
                         {
                             "message": "invalid or expired token",
-                            "errors": {"token": ["IS_INVALID"]},
                         }
                     ),
                     401,
@@ -91,7 +86,6 @@ def jwt_required():
                     jsonify(
                         {
                             "message": "invalid or expired token",
-                            "errors": {"token": ["IS_INVALID"]},
                         }
                     ),
                     401,
@@ -102,7 +96,6 @@ def jwt_required():
                     jsonify(
                         {
                             "message": "user is not active",
-                            "errors": {"user": ["NOT_ACTIVE"]},
                         }
                     ),
                     401,

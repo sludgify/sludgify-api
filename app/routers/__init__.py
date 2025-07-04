@@ -8,6 +8,7 @@ from .otp_email import otp_email_router
 from .carbon_credit import carbon_credit_router
 from .sludgify_analysis import sludgify_analysis_router
 from .transaction_payment import transaction_payment_router
+from .company_information import company_information_router
 
 
 def register_blueprints(app):
@@ -21,3 +22,4 @@ def register_blueprints(app):
     app.register_blueprint(carbon_credit_router)
     app.register_blueprint(sludgify_analysis_router)
     app.register_blueprint(transaction_payment_router)
+    app.register_blueprint(company_information_router)

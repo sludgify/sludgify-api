@@ -4,6 +4,7 @@ from werkzeug.exceptions import (
     NotFound,
     InternalServerError,
     TooManyRequests,
+    MethodNotAllowed,
 )
 
 
@@ -27,3 +28,7 @@ def register_error_handlers(app):
     @app.errorhandler(TooManyRequests)
     async def handle_too_many_requests(e):
         return jsonify({"message": "too many requests"}), 429
+
+    @app.errorhandler(MethodNotAllowed)
+    async def handle_internal_server_error(e):
+        return jsonify({"message": "internal server error"}), 500

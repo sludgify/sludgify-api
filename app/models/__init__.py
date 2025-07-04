@@ -7,3 +7,4 @@ from .otp_account_active import *
 from .wallet_user import *
 from .transaction_payment import *
 from .access_token import *
+from .company_information import *

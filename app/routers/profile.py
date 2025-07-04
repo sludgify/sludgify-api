@@ -11,13 +11,31 @@ async def default_avatar():
     return await profile_controller.default_avatar()
 
 
-@profile_router.patch("/sludgify/user/username")
+@profile_router.patch("/sludgify/user/first-name")
 @jwt_required()
-async def update_username():
+async def update_first_name():
     user = request.user
     json = request.json
-    username = json.get("username", "")
-    return await profile_controller.update_username(user, username)
+    first_name = json.get("first_name", "")
+    return await profile_controller.update_first_name(user, first_name)
+
+
+@profile_router.patch("/sludgify/user/last-name")
+@jwt_required()
+async def update_last_name():
+    user = request.user
+    json = request.json
+    last_name = json.get("last_name", "")
+    return await profile_controller.update_last_name(user, last_name)
+
+
+@profile_router.patch("/sludgify/user/country")
+@jwt_required()
+async def update_country():
+    user = request.user
+    json = request.json
+    country = json.get("country", "")
+    return await profile_controller.update_country(user, country)
 
 
 @profile_router.patch("/sludgify/user/password")
