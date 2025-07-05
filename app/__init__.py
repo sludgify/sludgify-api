@@ -5,7 +5,12 @@ import cloudinary
 
 def create_app(test_config=None):
     import os
-    from .config import Config
+    from .config import (
+        Config,
+        cloudinary_api_secret,
+        cloudinary_api_key,
+        cloudinary_cloud_name,
+    )
 
     chat_data = {}
 
@@ -42,9 +47,9 @@ def create_app(test_config=None):
 
     cloudinary.config(
         secure=True,
-        api_secret="Y1A_TWPWLXoDRecIeMIHr-MwFM8",
-        api_key="924953933435377",
-        cloud_name="ducs7evff",
+        api_secret=cloudinary_api_secret,
+        api_key=cloudinary_api_key,
+        cloud_name=cloudinary_cloud_name,
     )
 
     from .utils import load_key_pair
