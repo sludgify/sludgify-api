@@ -5,6 +5,7 @@ from email_validator import validate_email
 from ..serializers import UserSerializer, CompanyInformationSerializer
 import pycountry
 from phone_number_validator.validator import PhoneNumberValidator
+from ..models import CompanyNullModel
 
 
 class CompanyInformationController:
@@ -21,13 +22,15 @@ class CompanyInformationController:
                 "by_user_id", user_id=user.id
             )
         ):
+            company_null = CompanyNullModel()
             return (
                 jsonify(
                     {
-                        "message": "company information not found",
+                        "data": company_null,
+                        "message": "successfully get company information",
                     }
                 ),
-                404,
+                200,
             )
         company_data = self.company_information_serializer.serialize(user_data)
         return (
