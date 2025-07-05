@@ -20,7 +20,6 @@ class LoginController:
         self.user_seliazer = UserSerializer()
         self.token_serializer = TokenSerializer()
 
-    @staticmethod
     async def user_logout(self, user, token):
         if not (
             user_token := await BlacklistTokenDatabase.insert(user.id, token["iat"])
