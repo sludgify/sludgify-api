@@ -6,21 +6,31 @@
 </head>
 <body>
 
-<h2>Login</h2>
-<input id="email" placeholder="Email" />
-<input id="password" placeholder="Password" type="password" />
-<button onclick="doLogin()">Login</button>
+<h2 id="loginTitle">Login</h2>
+<div id="loginForm">
+  <input id="email" placeholder="Email" />
+  <input id="password" placeholder="Password" type="password" />
+  <button onclick="doLogin()">Login</button>
+</div>
 
 <div id="chat" style="display:none;">
   <h3>Room: default</h3>
   <div id="messages" style="border:1px solid #ccc; height:200px; overflow:auto; padding:5px;"></div>
   <input id="inputMsg" placeholder="Type message..." />
   <button onclick="sendMessage()">Send</button>
+  <button onclick="logout()">Logout</button>
 </div>
 
 <script>
   let socket;
-  let token;
+  let token = localStorage.getItem('chat_token');
+
+  // Jika token sudah ada, langsung masuk chat
+  if (token) {
+    startChat();
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('loginTitle').textContent = 'You are logged in';
+  }
 
   async function doLogin() {
     const email = document.getElementById('email').value;
@@ -35,7 +45,10 @@
     const data = await res.json();
     if (data.token) {
       token = data.token.access_token;
+      localStorage.setItem('chat_token', token);
       startChat();
+      document.getElementById('loginForm').style.display = 'none';
+      document.getElementById('loginTitle').textContent = 'You are logged in';
     } else {
       alert('Login failed: ' + (data.error || 'Unknown error'));
     }
@@ -43,21 +56,19 @@
 
   function startChat() {
     document.getElementById('chat').style.display = 'block';
-    socket = io();
+    socket = io(window.location.origin, { auth: { token } });
 
     socket.on('connect', () => {
-      socket.emit('join', {room: 'default', token});
+      socket.emit('join', { room: 'default', token });
     });
 
     socket.on('chat_history', (messages) => {
       const messagesDiv = document.getElementById('messages');
       messagesDiv.innerHTML = '';
       messages.forEach(msg => {
-        // Jika msg berbentuk objek (payload)
-        if (typeof msg === 'object' && msg.message) {
+        if (typeof msg === 'object' && msg.response_message) {
           addMessageWithLinks(msg);
         } else {
-          // fallback string message
           const div = document.createElement('div');
           div.textContent = msg;
           messagesDiv.appendChild(div);
@@ -66,53 +77,62 @@
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
 
-    socket.on('message', (msg) => {
-      const messagesDiv = document.getElementById('messages');
-      const div = document.createElement('div');
-      div.textContent = msg;
-      messagesDiv.appendChild(div);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    });
-
     socket.on('message_with_links', (data) => {
       addMessageWithLinks(data);
     });
 
-    socket.on('disconnect', () => {
-      alert('Disconnected from server');
+    socket.on('force_disconnect', (reason) => {
+      alert('Disconnected: ' + reason);
+      socket.disconnect();
+      localStorage.removeItem('chat_token');
+      location.reload();
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('Disconnected: ' + reason);
     });
   }
 
   function addMessageWithLinks(data) {
-  const messagesDiv = document.getElementById('messages');
+    const messagesDiv = document.getElementById('messages');
 
-  const messageTextDiv = document.createElement('div');
-  messageTextDiv.textContent = `${data.username}: ${data.message}`;
-  messagesDiv.appendChild(messageTextDiv);
+    const originalMsgDiv = document.createElement('div');
+    originalMsgDiv.textContent = `${data.username}: ${data.original_message}`;
+    originalMsgDiv.style.fontWeight = 'bold';
+    messagesDiv.appendChild(originalMsgDiv);
 
-  if (data.links && data.links.length > 0) {
-    data.links.forEach((link, i) => {
-      const btn = document.createElement('button');
-      btn.textContent = `Download File ${i + 1}`;
-      btn.style.margin = '4px';
-      btn.onclick = () => {
-        window.open(link, '_blank');
-      };
-      messagesDiv.appendChild(btn);
-    });
+    const responseMsgDiv = document.createElement('div');
+    responseMsgDiv.textContent = `Bot: ${data.response_message}`;
+    messagesDiv.appendChild(responseMsgDiv);
+
+    if (data.links && data.links.length > 0) {
+      data.links.forEach((link, i) => {
+        const btn = document.createElement('button');
+        btn.textContent = `Download File ${i + 1}`;
+        btn.style.margin = '4px';
+        btn.onclick = () => {
+          window.open(link, '_blank');
+        };
+        messagesDiv.appendChild(btn);
+      });
+    }
+
+    messagesDiv.appendChild(document.createElement('hr'));
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
-
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
-
 
   function sendMessage() {
     const input = document.getElementById('inputMsg');
     const msg = input.value;
     if (msg && socket) {
-      socket.emit('message', {room: 'default', msg, token});
+      socket.emit('message', { room: 'default', msg, token });
       input.value = '';
     }
+  }
+
+  function logout() {
+    localStorage.removeItem('chat_token');
+    location.reload();
   }
 </script>
 

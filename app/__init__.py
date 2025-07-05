@@ -62,7 +62,7 @@ def create_app(test_config=None):
 
     @app.route("/chat")
     def chat():
-        return render_template("index.html", messages=chat_data)
+        return render_template("index.html")
 
     from .sockets import register_socketio_events
 
