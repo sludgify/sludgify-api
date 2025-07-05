@@ -67,6 +67,7 @@ mongoengine==0.29.1
 oauthlib==2.1.0
 ordered-set==4.1.0
 packaging==25.0
+phone-number-validator==1.0.2
 pillow==11.3.0
 pluggy==1.6.0
 prompt_toolkit==3.0.51
@@ -74,6 +75,7 @@ proto-plus==1.26.1
 protobuf==5.29.5
 pyasn1==0.6.1
 pyasn1_modules==0.4.2
+pycountry==24.6.1
 pycparser==2.22
 pydantic==2.11.7
 pydantic_core==2.33.2

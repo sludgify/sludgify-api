@@ -7,8 +7,6 @@ def kalkulator_emisi_default(sludge_ton, sludge_type):
 
     emisi_kg = sludge_ton * faktor_emisi[sludge_type]
     emisi_ton = round(emisi_kg / 1000, 2)
-
-    print(f"\nTotal emisi karbon ({sludge_type} - Default): {emisi_ton} ton CO₂")
     return emisi_ton
 
 
@@ -20,7 +18,6 @@ def hitung_emisi_co2_coprocessing(M):
     konversi_kg = 1000
 
     emisi_kg = M * fraksi_karbon * faktor_oksidasi * konversi_CO2 * konversi_kg
-    print(f"\nPerkiraan emisi CO₂ dari co-processing: {round(emisi_kg, 2)} kg CO₂")
     return round(emisi_kg, 2)
 
 
@@ -36,8 +33,6 @@ def hitung_emisi_co2e_kompos(M):
     emisi_n2o = massa_kg * ef_n2o * gwp_n2o
     total_gram = emisi_ch4 + emisi_n2o
     emisi_kg = total_gram / 1000
-
-    print(f"\nPerkiraan emisi CO₂e dari komposting: {round(emisi_kg, 2)} kg CO₂e")
     return round(emisi_kg, 2)
 
 
@@ -54,7 +49,4 @@ def hitung_emisi_maggot(massa_sludge):
     emisi_n2o = massa_sludge_kg * ef_n2o * gwp_n2o
     emisi_total_gram = emisi_ch4 + emisi_n2o
     emisi_total_kg = emisi_total_gram / 1000
-
-    print(f"\nTotal emisi GRK dari dekomposisi sludge pakai maggot:")
-    print(f"{round(emisi_total_kg, 2)} kg CO₂e")
     return round(emisi_total_kg, 2)
