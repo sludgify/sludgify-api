@@ -10,6 +10,7 @@ from .sludgify_analysis import sludgify_analysis_router
 from .transaction_payment import transaction_payment_router
 from .company_information import company_information_router
 from .calculator import calculator_router
+from .chat_bot import chat_bot_router
 
 
 def register_blueprints(app):
@@ -25,3 +26,4 @@ def register_blueprints(app):
     app.register_blueprint(transaction_payment_router)
     app.register_blueprint(company_information_router)
     app.register_blueprint(calculator_router)
+    app.register_blueprint(chat_bot_router)

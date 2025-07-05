@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Chat with JWT Auth + Download Buttons</title>
+  <title>Chat with JWT Auth + Voice + PDF Resume + Loading + Markdown</title>
   <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 
@@ -16,16 +17,37 @@
 <div id="chat" style="display:none;">
   <h3>Room: default</h3>
   <div id="messages" style="border:1px solid #ccc; height:300px; overflow:auto; padding:5px;"></div>
+
   <input id="inputMsg" placeholder="Type message..." />
-  <button onclick="sendMessage()">Send</button>
+  <button id="textButton" onclick="sendMessage()">Send</button>
+
+  <br><br>
+  <button id="recordButton" onclick="toggleRecording()">Start Recording</button>
+
+  <br><br>
+  <input type="text" id="resumePrompt" placeholder="Enter prompt for PDF resume..." />
+  <br><br>
+  <button id="recordResumeButton" onclick="toggleResumeRecording()">Start Resume Voice Prompt</button>
+
+  <br><br>
+  <input type="file" id="pdfInput" accept="application/pdf" />
+  <button id="pdfButton" onclick="sendPdfForResume()">Send PDF for Resume</button>
+
+  <br><br>
   <button onclick="logout()">Logout</button>
 </div>
 
 <script>
   let socket;
   let token = localStorage.getItem('chat_token');
+  let mediaRecorder;
+  let audioChunks = [];
+  let isRecording = false;
 
-  // Jika token sudah ada, langsung masuk chat
+  let resumeRecorder;
+  let resumeAudioChunks = [];
+  let isResumeRecording = false;
+
   if (token) {
     startChat();
     document.getElementById('loginForm').style.display = 'none';
@@ -78,6 +100,7 @@
     });
 
     socket.on('message_with_links', (data) => {
+      enableAllButtons();
       addMessageWithLinks(data);
     });
 
@@ -100,7 +123,7 @@
     messagesDiv.appendChild(originalMsgDiv);
 
     const responseMsgDiv = document.createElement('div');
-    responseMsgDiv.textContent = `Bot: ${data.response_message}`;
+    responseMsgDiv.innerHTML = `Bot:<br>${marked.parse(data.response_message)}`;
     messagesDiv.appendChild(responseMsgDiv);
 
     if (data.links && data.links.length > 0) {
@@ -123,9 +146,135 @@
     const input = document.getElementById('inputMsg');
     const msg = input.value.trim();
     if (msg && socket) {
-      socket.emit('message', { room: 'default', msg, token });
+      disableAllButtons('Sending...');
+      socket.emit('message', { room: 'default', msg, token, type: 'text' });
       input.value = '';
     }
+  }
+
+  async function toggleRecording() {
+    const recordButton = document.getElementById('recordButton');
+
+    if (isRecording) {
+      mediaRecorder.stop();
+      recordButton.textContent = 'Start Recording';
+      isRecording = false;
+    } else {
+      if (!navigator.mediaDevices) {
+        alert('Your browser does not support audio recording.');
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        audioChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/m4a' });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64AudioMessage = reader.result.split(',')[1];
+          if (socket && base64AudioMessage) {
+            disableAllButtons('Processing audio...');
+            socket.emit('message', { room: 'default', audio: base64AudioMessage, token, type: 'voice' });
+          }
+        };
+        reader.readAsDataURL(audioBlob);
+      };
+
+      mediaRecorder.start();
+      recordButton.textContent = 'Stop Recording';
+      isRecording = true;
+    }
+  }
+
+  async function toggleResumeRecording() {
+    const recordButton = document.getElementById('recordResumeButton');
+
+    if (isResumeRecording) {
+      resumeRecorder.stop();
+      recordButton.textContent = 'Start Resume Voice Prompt';
+      isResumeRecording = false;
+    } else {
+      if (!navigator.mediaDevices) {
+        alert('Your browser does not support audio recording.');
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      resumeRecorder = new MediaRecorder(stream);
+      resumeAudioChunks = [];
+
+      resumeRecorder.ondataavailable = (e) => {
+        resumeAudioChunks.push(e.data);
+      };
+
+      resumeRecorder.onstop = () => {
+        const audioBlob = new Blob(resumeAudioChunks, { type: 'audio/m4a' });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64AudioPrompt = reader.result.split(',')[1];
+          document.getElementById('resumePrompt').value = '[voice_prompt]:' + base64AudioPrompt;
+        };
+        reader.readAsDataURL(audioBlob);
+      };
+
+      resumeRecorder.start();
+      recordButton.textContent = 'Stop Resume Voice Prompt';
+      isResumeRecording = true;
+    }
+  }
+
+  function sendPdfForResume() {
+    const fileInput = document.getElementById('pdfInput');
+    const promptInput = document.getElementById('resumePrompt');
+
+    if (fileInput.files.length === 0) {
+      alert('Please select a PDF file.');
+      return;
+    }
+
+    disableAllButtons('Uploading PDF...');
+
+    const file = fileInput.files[0];
+    const prompt = promptInput.value.trim() || "Ringkas file berikut ini.";
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const base64File = e.target.result.split(',')[1];
+      socket.emit('message', { room: 'default', file: base64File, token, type: 'resume', msg: prompt });
+      fileInput.value = '';
+      promptInput.value = '';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function disableAllButtons(loadingText = 'Loading...') {
+    document.getElementById('textButton').disabled = true;
+    document.getElementById('textButton').textContent = loadingText;
+
+    document.getElementById('recordButton').disabled = true;
+
+    document.getElementById('pdfButton').disabled = true;
+    document.getElementById('pdfButton').textContent = loadingText;
+
+    document.getElementById('recordResumeButton').disabled = true;
+  }
+
+  function enableAllButtons() {
+    document.getElementById('textButton').disabled = false;
+    document.getElementById('textButton').textContent = 'Send';
+
+    document.getElementById('recordButton').disabled = false;
+
+    document.getElementById('pdfButton').disabled = false;
+    document.getElementById('pdfButton').textContent = 'Send PDF for Resume';
+
+    document.getElementById('recordResumeButton').disabled = false;
   }
 
   function logout() {
