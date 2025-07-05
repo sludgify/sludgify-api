@@ -55,7 +55,9 @@ def create_app(test_config=None):
     from .routers import register_blueprints
     from .error_handlers import register_error_handlers
     from .middlewares import register_middlewares
+    from .sockets import register_socketio_events
 
+    register_socketio_events(socket_io, chat_data)
     register_blueprints(app)
     register_error_handlers(app)
     register_middlewares(app)
@@ -63,9 +65,5 @@ def create_app(test_config=None):
     @app.route("/chat")
     def chat():
         return render_template("index.html")
-
-    from .sockets import register_socketio_events
-
-    register_socketio_events(socket_io, chat_data)
 
     return app
