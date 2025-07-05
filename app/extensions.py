@@ -9,10 +9,12 @@ from flask_socketio import SocketIO
 db = MongoEngine()
 mail = Mail()
 bcrypt = Bcrypt()
-socket_io = SocketIO(cors_allowed_origins="*", async_mode="threading")
+socket_io = SocketIO(
+    cors_allowed_origins="*", async_mode="threading", message_queue=f"{celery_url}/1"
+)
 
 limiter = Limiter(
     key_func=limiter_key,
     default_limits=["200 per day", "50 per hour"],
-    storage_uri=celery_url,
+    storage_uri=f"{celery_url}/1",
 )
