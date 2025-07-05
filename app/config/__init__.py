@@ -22,4 +22,3 @@ class Config:
     MAIL_DEFAULT_SENDER = smtp_email
 
     CORS_SUPPORTS_CREDENTIALS = True
-    CELERY_URL = celery_url
