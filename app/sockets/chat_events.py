@@ -10,41 +10,13 @@ import datetime
 def register_socketio_events(socketio, chat_data):
     response_text = GeminiTextResponseController(google_api_key)
 
-    MAX_USERS = 3
-    connected_ips = set()
-
     @socketio.on("connect")
     def handle_connect():
-        ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-        if ip and "," in ip:
-            ip = ip.split(",")[-1].strip()
-
-        print(f"User connected from IP: {ip}")
-
-        if len(connected_ips) >= MAX_USERS:
-            print("Max users reached. Disconnecting user.")
-            emit("force_disconnect", "Server is full")
-            disconnect()
-            return
-
-        if ip in connected_ips:
-            print("Duplicate connection from same IP. Disconnecting user.")
-            emit("force_disconnect", "Duplicate connection detected")
-            disconnect()
-            return
-
-        connected_ips.add(ip)
-        print(f"Current connected users: {len(connected_ips)}")
+        print(f"User connected from IP: {request.remote_addr}")
 
     @socketio.on("disconnect")
     def handle_disconnect():
-        ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-        if ip and "," in ip:
-            ip = ip.split(",")[-1].strip()
-
-        if ip in connected_ips:
-            connected_ips.remove(ip)
-            print(f"User disconnected. Current users: {len(connected_ips)}")
+        print(f"User disconnected from IP: {request.remote_addr}")
 
     @socketio.on("join")
     def handle_join(data):
@@ -54,7 +26,12 @@ def register_socketio_events(socketio, chat_data):
             disconnect()
             return
 
-        username = user.get("username", "Anonymous")
+        data_user = UserModel.objects(id=user.get("sub")).first()
+        if not data_user:
+            disconnect()
+            return
+
+        username = f"{data_user.first_name} {data_user.last_name}"
         room = data.get("room", "default")
         join_room(room)
 

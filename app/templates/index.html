@@ -15,7 +15,7 @@
 
 <div id="chat" style="display:none;">
   <h3>Room: default</h3>
-  <div id="messages" style="border:1px solid #ccc; height:200px; overflow:auto; padding:5px;"></div>
+  <div id="messages" style="border:1px solid #ccc; height:300px; overflow:auto; padding:5px;"></div>
   <input id="inputMsg" placeholder="Type message..." />
   <button onclick="sendMessage()">Send</button>
   <button onclick="logout()">Logout</button>
@@ -38,8 +38,8 @@
 
     const res = await fetch('/sludgify/login', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({email, password, provider: 'auth_internal'})
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, provider: 'auth_internal' })
     });
 
     const data = await res.json();
@@ -56,7 +56,7 @@
 
   function startChat() {
     document.getElementById('chat').style.display = 'block';
-    socket = io(window.location.origin, { auth: { token } });
+    socket = io(window.location.origin);
 
     socket.on('connect', () => {
       socket.emit('join', { room: 'default', token });
@@ -81,15 +81,13 @@
       addMessageWithLinks(data);
     });
 
-    socket.on('force_disconnect', (reason) => {
-      alert('Disconnected: ' + reason);
-      socket.disconnect();
-      localStorage.removeItem('chat_token');
-      location.reload();
-    });
-
     socket.on('disconnect', (reason) => {
       console.log('Disconnected: ' + reason);
+      if (reason === 'io server disconnect') {
+        alert('You were disconnected by the server.');
+        localStorage.removeItem('chat_token');
+        location.reload();
+      }
     });
   }
 
@@ -123,7 +121,7 @@
 
   function sendMessage() {
     const input = document.getElementById('inputMsg');
-    const msg = input.value;
+    const msg = input.value.trim();
     if (msg && socket) {
       socket.emit('message', { room: 'default', msg, token });
       input.value = '';
