@@ -36,7 +36,7 @@ class GeminiAudioTranscriber:
             response = self.client.models.generate_content(
                 model=self.model_name,
                 config=types.GenerateContentConfig(
-                    thinking_config=types.ThinkingConfig(include_thoughts=True)
+                    thinking_config=types.ThinkingConfig(include_thoughts=False)
                 ),
                 contents=[
                     types.Part.from_bytes(data=audio_bytes, mime_type="audio/m4a")

@@ -40,7 +40,7 @@ class GeminiFileResponseController:
                     prompt,
                 ],
                 config=types.GenerateContentConfig(
-                    thinking_config=types.ThinkingConfig(include_thoughts=True)
+                    thinking_config=types.ThinkingConfig(include_thoughts=False)
                 ),
             )
 

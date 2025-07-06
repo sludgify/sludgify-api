@@ -190,6 +190,14 @@ def register_socketio_events(socketio, chat_data):
                     )
 
                     full_msg = f"{'\n'.join(i.text for i in result)}"
+
+                    try:
+                        result_file = save_markdown_to_pdf(result)
+                        result_cd = cloudinary.uploader.upload(result_file)
+                        urls.append(result_cd["secure_url"])
+                    except Exception as e:
+                        print(f"Cloudinary upload error: {e}")
+                        urls.append("File upload failed.")
                     payload = {
                         "username": username,
                         "original_message": msg,
@@ -200,8 +208,101 @@ def register_socketio_events(socketio, chat_data):
                     save_and_emit(payload)
 
                 except Exception as e:
+                    print("masuk 1")
                     print(f"Error: {e}")
 
                 finally:
                     if pdf_path and os.path.exists(pdf_path):
                         os.remove(pdf_path)
+            elif msg_type == "voice":
+                try:
+                    audio_base64 = data.get("audio_base64")
+                    pdf_base64 = data.get("pdf_base64")
+
+                    print(audio_base64 is not None)
+                    print(pdf_base64 is not None)
+
+                    import base64
+                    import tempfile
+                    import os
+
+                    def validate_and_save_pdf(base64_string: str) -> str:
+                        file_data = base64.b64decode(base64_string)
+                        if file_data[:5] != b"%PDF-":
+                            raise ValueError("File bukan PDF yang valid.")
+
+                        with tempfile.NamedTemporaryFile(
+                            delete=False, suffix=".pdf"
+                        ) as temp_file:
+                            temp_file.write(file_data)
+                            return temp_file.name
+
+                    def validate_and_save_audio(base64_string: str) -> str:
+                        file_data = base64.b64decode(base64_string)
+
+                        if file_data[:3] == b"ID3":
+                            extension = ".mp3"
+                        elif file_data[:4] == b"RIFF" and file_data[8:12] == b"WAVE":
+                            extension = ".wav"
+                        else:
+                            raise ValueError(
+                                "File bukan audio MP3 atau WAV yang valid."
+                            )
+
+                        with tempfile.NamedTemporaryFile(
+                            delete=False, suffix=extension
+                        ) as temp_file:
+                            temp_file.write(file_data)
+                            return temp_file.name
+
+                    pdf_path = None
+                    audio_path = None
+
+                    try:
+                        # Simpan file PDF dan Audio ke path sementara
+                        pdf_path = validate_and_save_pdf(pdf_base64)
+                        audio_path = validate_and_save_audio(audio_base64)
+
+                        # Transkripsi audio
+                        transcribed_result = audio_transcriber.transcribe(audio_path)
+                        transcribed_text = " ".join(
+                            [res.text for res in transcribed_result]
+                        )
+
+                        # Proses file PDF dan hasil transkripsi
+                        result = file_responder.get_response_from_file(
+                            pdf_path, transcribed_text
+                        )
+                        full_msg = f"{'\n'.join(i.text for i in result)}"
+
+                        try:
+                            result_file = save_markdown_to_pdf(result)
+                            result_cd = cloudinary.uploader.upload(result_file)
+                            urls.append(result_cd["secure_url"])
+                        except Exception as e:
+                            print(f"Cloudinary upload error: {e}")
+                            urls.append("File upload failed.")
+                        # Payload yang akan dikirim ke client
+                        payload = {
+                            "username": username,
+                            "original_message": transcribed_text,
+                            "response_message": full_msg,
+                            "links": urls,
+                        }
+
+                        save_and_emit(payload)
+
+                    except Exception as e:
+                        print("masuk 2")
+                        print(f"Error: {e}")
+
+                    finally:
+                        # Hapus file sementara
+                        if pdf_path and os.path.exists(pdf_path):
+                            os.remove(pdf_path)
+                        if audio_path and os.path.exists(audio_path):
+                            os.remove(audio_path)
+
+                except Exception as e:
+                    print("masuk 3")
+                    print(f"Error: {e}")
