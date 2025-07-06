@@ -10,7 +10,10 @@ db = MongoEngine()
 mail = Mail()
 bcrypt = Bcrypt()
 socket_io = SocketIO(
-    cors_allowed_origins="*", async_mode="threading", message_queue=f"{celery_url}/1"
+    cors_allowed_origins="*",
+    async_mode="threading",
+    message_queue=f"{celery_url}/1",
+    max_http_buffer_size=100 * 1024 * 1024,
 )
 
 limiter = Limiter(

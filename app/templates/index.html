@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Chat with JWT Auth + Voice + PDF Resume + Loading + Markdown</title>
+  <title>Chat with JWT Auth + Voice + Loading + Markdown</title>
   <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
@@ -25,15 +25,6 @@
   <button id="recordButton" onclick="toggleRecording()">Start Recording</button>
 
   <br><br>
-  <input type="text" id="resumePrompt" placeholder="Enter prompt for PDF resume..." />
-  <br><br>
-  <button id="recordResumeButton" onclick="toggleResumeRecording()">Start Resume Voice Prompt</button>
-
-  <br><br>
-  <input type="file" id="pdfInput" accept="application/pdf" />
-  <button id="pdfButton" onclick="sendPdfForResume()">Send PDF for Resume</button>
-
-  <br><br>
   <button onclick="logout()">Logout</button>
 </div>
 
@@ -43,10 +34,6 @@
   let mediaRecorder;
   let audioChunks = [];
   let isRecording = false;
-
-  let resumeRecorder;
-  let resumeAudioChunks = [];
-  let isResumeRecording = false;
 
   if (token) {
     startChat();
@@ -118,11 +105,14 @@
     const messagesDiv = document.getElementById('messages');
 
     const originalMsgDiv = document.createElement('div');
-    originalMsgDiv.textContent = `${data.username}: ${data.original_message}`;
     originalMsgDiv.style.fontWeight = 'bold';
+    originalMsgDiv.style.marginBottom = '5px';
+    originalMsgDiv.innerHTML = `<strong>${data.username}:</strong><br>${marked.parse(data.original_message)}`;
     messagesDiv.appendChild(originalMsgDiv);
 
     const responseMsgDiv = document.createElement('div');
+    responseMsgDiv.style.whiteSpace = 'pre-wrap';
+    responseMsgDiv.style.marginBottom = '5px';
     responseMsgDiv.innerHTML = `Bot:<br>${marked.parse(data.response_message)}`;
     messagesDiv.appendChild(responseMsgDiv);
 
@@ -159,6 +149,10 @@
       mediaRecorder.stop();
       recordButton.textContent = 'Start Recording';
       isRecording = false;
+
+      document.getElementById('inputMsg').disabled = false;
+      document.getElementById('textButton').disabled = false;
+
     } else {
       if (!navigator.mediaDevices) {
         alert('Your browser does not support audio recording.');
@@ -189,68 +183,10 @@
       mediaRecorder.start();
       recordButton.textContent = 'Stop Recording';
       isRecording = true;
+
+      document.getElementById('inputMsg').disabled = true;
+      document.getElementById('textButton').disabled = true;
     }
-  }
-
-  async function toggleResumeRecording() {
-    const recordButton = document.getElementById('recordResumeButton');
-
-    if (isResumeRecording) {
-      resumeRecorder.stop();
-      recordButton.textContent = 'Start Resume Voice Prompt';
-      isResumeRecording = false;
-    } else {
-      if (!navigator.mediaDevices) {
-        alert('Your browser does not support audio recording.');
-        return;
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      resumeRecorder = new MediaRecorder(stream);
-      resumeAudioChunks = [];
-
-      resumeRecorder.ondataavailable = (e) => {
-        resumeAudioChunks.push(e.data);
-      };
-
-      resumeRecorder.onstop = () => {
-        const audioBlob = new Blob(resumeAudioChunks, { type: 'audio/m4a' });
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64AudioPrompt = reader.result.split(',')[1];
-          document.getElementById('resumePrompt').value = '[voice_prompt]:' + base64AudioPrompt;
-        };
-        reader.readAsDataURL(audioBlob);
-      };
-
-      resumeRecorder.start();
-      recordButton.textContent = 'Stop Resume Voice Prompt';
-      isResumeRecording = true;
-    }
-  }
-
-  function sendPdfForResume() {
-    const fileInput = document.getElementById('pdfInput');
-    const promptInput = document.getElementById('resumePrompt');
-
-    if (fileInput.files.length === 0) {
-      alert('Please select a PDF file.');
-      return;
-    }
-
-    disableAllButtons('Uploading PDF...');
-
-    const file = fileInput.files[0];
-    const prompt = promptInput.value.trim() || "Ringkas file berikut ini.";
-
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      const base64File = e.target.result.split(',')[1];
-      socket.emit('message', { room: 'default', file: base64File, token, type: 'resume', msg: prompt });
-      fileInput.value = '';
-      promptInput.value = '';
-    };
-    reader.readAsDataURL(file);
   }
 
   function disableAllButtons(loadingText = 'Loading...') {
@@ -258,11 +194,6 @@
     document.getElementById('textButton').textContent = loadingText;
 
     document.getElementById('recordButton').disabled = true;
-
-    document.getElementById('pdfButton').disabled = true;
-    document.getElementById('pdfButton').textContent = loadingText;
-
-    document.getElementById('recordResumeButton').disabled = true;
   }
 
   function enableAllButtons() {
@@ -271,10 +202,7 @@
 
     document.getElementById('recordButton').disabled = false;
 
-    document.getElementById('pdfButton').disabled = false;
-    document.getElementById('pdfButton').textContent = 'Send PDF for Resume';
-
-    document.getElementById('recordResumeButton').disabled = false;
+    document.getElementById('inputMsg').disabled = false;
   }
 
   function logout() {

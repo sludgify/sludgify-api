@@ -1,4 +1,3 @@
-import pathlib
 from flask_socketio import join_room, send, emit, disconnect
 from flask import request
 from ..utils import (
@@ -80,146 +79,129 @@ def register_socketio_events(socketio, chat_data):
         msg_type = data.get("type", "text")
         urls = []
 
-        if msg_type == "text":
-            msg = data.get("msg")
-            if msg:
-                result = response_text.get_response_text(msg)
-                full_msg = f"{'\n'.join(i.text for i in result)}"
-                result_file = save_markdown_to_pdf(result)
-                result_cd = cloudinary.uploader.upload(result_file)
-                urls.append(result_cd["secure_url"])
+        def save_and_emit(payload):
+            ChatHistoryModel(
+                room=room,
+                original_message=payload["original_message"],
+                response_message=payload["response_message"],
+                links=payload["links"],
+                user=data_user,
+                created_at=int(datetime.datetime.now().timestamp()),
+            ).save()
 
-                payload = {
-                    "username": username,
-                    "original_message": msg,
-                    "response_message": full_msg,
-                    "links": urls,
-                }
+            if room not in chat_data:
+                chat_data[room] = []
+            chat_data[room].append(payload)
 
-                ChatHistoryModel(
-                    room=room,
-                    original_message=msg,
-                    response_message=full_msg,
-                    links=urls,
-                    user=data_user,
-                    created_at=int(datetime.datetime.now().timestamp()),
-                ).save()
+            emit("message_with_links", payload, room=room)
 
-                if room not in chat_data:
-                    chat_data[room] = []
-                chat_data[room].append(payload)
-
-                emit("message_with_links", payload, room=room)
-
-        elif msg_type == "voice":
-            audio_base64 = data.get("audio")
-            if audio_base64:
-                with tempfile.NamedTemporaryFile(
-                    delete=False, suffix=".m4a"
-                ) as temp_audio_file:
-                    audio_data = base64.b64decode(audio_base64)
-                    temp_audio_file.write(audio_data)
-                    temp_audio_file_path = temp_audio_file.name
-
-                try:
-                    transcribed_result = audio_transcriber.transcribe(
-                        temp_audio_file_path
-                    )
-                    transcribed_text = " ".join(
-                        [res.text for res in transcribed_result]
-                    )
-
-                    result = response_text.get_response_text(transcribed_text)
+        methode = data.get("methode")
+        if methode != "resume":
+            if msg_type == "text":
+                msg = data.get("msg")
+                if msg:
+                    result = response_text.get_response_text(msg)
                     full_msg = f"{'\n'.join(i.text for i in result)}"
-                    result_file = save_markdown_to_pdf(result)
-                    result_cd = cloudinary.uploader.upload(result_file)
-                    urls.append(result_cd["secure_url"])
 
-                    payload = {
-                        "username": username,
-                        "original_message": transcribed_text,
-                        "response_message": full_msg,
-                        "links": urls,
-                    }
-
-                    ChatHistoryModel(
-                        room=room,
-                        original_message=transcribed_text,
-                        response_message=full_msg,
-                        links=urls,
-                        user=data_user,
-                        created_at=int(datetime.datetime.now().timestamp()),
-                    ).save()
-
-                    if room not in chat_data:
-                        chat_data[room] = []
-                    chat_data[room].append(payload)
-
-                    emit("message_with_links", payload, room=room)
-
-                finally:
-                    os.remove(temp_audio_file_path)
-
-        elif msg_type == "resume":
-            file_base64 = data.get("file")
-            msg = data.get("msg", "Ringkas file berikut ini.")
-
-            if file_base64:
-                with tempfile.NamedTemporaryFile(
-                    delete=False, suffix=".pdf"
-                ) as temp_pdf_file:
-                    file_data = base64.b64decode(file_base64)
-                    temp_pdf_file.write(file_data)
-                    temp_pdf_file_path = temp_pdf_file.name
-
-                try:
-                    if msg.startswith("[voice_prompt]:"):
-                        audio_base64 = msg.replace("[voice_prompt]:", "")
-                        with tempfile.NamedTemporaryFile(
-                            delete=False, suffix=".m4a"
-                        ) as temp_audio_file:
-                            audio_data = base64.b64decode(audio_base64)
-                            temp_audio_file.write(audio_data)
-                            temp_audio_file_path = temp_audio_file.name
-
-                        try:
-                            transcribed_result = audio_transcriber.transcribe(
-                                temp_audio_file_path
-                            )
-                            msg = " ".join([res.text for res in transcribed_result])
-                        finally:
-                            os.remove(temp_audio_file_path)
-
-                    summarized_result = file_responder.summarize_file(
-                        temp_pdf_file_path, msg
-                    )
-                    summarized_text = "\n".join([res.text for res in summarized_result])
-
-                    result_file = save_markdown_to_pdf(summarized_result)
-                    result_cd = cloudinary.uploader.upload(result_file)
-                    urls.append(result_cd["secure_url"])
+                    try:
+                        result_file = save_markdown_to_pdf(result)
+                        result_cd = cloudinary.uploader.upload(result_file)
+                        urls.append(result_cd["secure_url"])
+                    except Exception as e:
+                        print(f"Cloudinary upload error: {e}")
+                        urls.append("File upload failed.")
 
                     payload = {
                         "username": username,
                         "original_message": msg,
-                        "response_message": summarized_text,
+                        "response_message": full_msg,
                         "links": urls,
                     }
 
-                    ChatHistoryModel(
-                        room=room,
-                        original_message=msg,
-                        response_message=summarized_text,
-                        links=urls,
-                        user=data_user,
-                        created_at=int(datetime.datetime.now().timestamp()),
-                    ).save()
+                    save_and_emit(payload)
 
-                    if room not in chat_data:
-                        chat_data[room] = []
-                    chat_data[room].append(payload)
+            elif msg_type == "voice":
+                audio_base64 = data.get("audio")
+                if audio_base64:
+                    with tempfile.NamedTemporaryFile(
+                        delete=False, suffix=".m4a"
+                    ) as temp_audio_file:
+                        audio_data = base64.b64decode(audio_base64)
+                        temp_audio_file.write(audio_data)
+                        temp_audio_file_path = temp_audio_file.name
 
-                    emit("message_with_links", payload, room=room)
+                    try:
+                        transcribed_result = audio_transcriber.transcribe(
+                            temp_audio_file_path
+                        )
+                        transcribed_text = " ".join(
+                            [res.text for res in transcribed_result]
+                        )
+
+                        result = response_text.get_response_text(transcribed_text)
+                        full_msg = f"{'\n'.join(i.text for i in result)}"
+
+                        try:
+                            result_file = save_markdown_to_pdf(result)
+                            result_cd = cloudinary.uploader.upload(result_file)
+                            urls.append(result_cd["secure_url"])
+                        except Exception as e:
+                            print(f"Cloudinary upload error: {e}")
+                            urls.append("File upload failed.")
+
+                        payload = {
+                            "username": username,
+                            "original_message": transcribed_text,
+                            "response_message": full_msg,
+                            "links": urls,
+                        }
+
+                        save_and_emit(payload)
+
+                    finally:
+                        os.remove(temp_audio_file_path)
+        elif methode == "resume":
+            if msg_type == "text":
+                msg = data.get("msg")
+                pdf_base64 = data.get("pdf_base64")
+
+                def validate_and_save_pdf(base64_string: str) -> str:
+                    import base64
+                    import tempfile
+
+                    file_data = base64.b64decode(base64_string)
+                    if file_data[:5] != b"%PDF-":
+                        raise ValueError("File bukan PDF yang valid.")
+
+                    with tempfile.NamedTemporaryFile(
+                        delete=False, suffix=".pdf"
+                    ) as temp_file:
+                        temp_file.write(file_data)
+                        return temp_file.name
+
+                pdf_path = None
+
+                try:
+                    pdf_path = validate_and_save_pdf(pdf_base64)
+                    print(f"File valid disimpan di: {pdf_path}")
+
+                    result = file_responder.get_response_from_file(
+                        pdf_path, "Tolong ringkas isi file ini dalam 3 kalimat."
+                    )
+
+                    full_msg = f"{'\n'.join(i.text for i in result)}"
+                    payload = {
+                        "username": username,
+                        "original_message": msg,
+                        "response_message": full_msg,
+                        "links": urls,
+                    }
+
+                    save_and_emit(payload)
+
+                except Exception as e:
+                    print(f"Error: {e}")
 
                 finally:
-                    os.remove(temp_pdf_file_path)
+                    if pdf_path and os.path.exists(pdf_path):
+                        os.remove(pdf_path)
