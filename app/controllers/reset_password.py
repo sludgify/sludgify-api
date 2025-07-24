@@ -1,0 +1,299 @@
+from ..databases import UserDatabase, ResetPasswordDatabase
+from flask import jsonify
+from email_validator import validate_email
+from ..utils import TokenWebResetPassword, TokenEmailResetPassword, SendEmail
+import datetime
+import re
+from ..serializers import UserSerializer, TokenSerializer
+
+
+class ResetPasswordController:
+    def __init__(self):
+        self.user_seliazer = UserSerializer()
+        self.token_serializer = TokenSerializer()
+
+    async def get_user_reset_password_verification(self, token, timestamp):
+        created_at = int(timestamp.timestamp())
+        errors = {}
+        if token is None or (isinstance(token, str) and token.strip() == ""):
+            errors.setdefault("token", []).append("IS_REQUIRED")
+        else:
+            if not isinstance(token, str):
+                errors.setdefault("token", []).append("MUST_TEXT")
+        if errors:
+            return jsonify({"errors": errors, "message": "validations error"}), 400
+        token_email = await TokenEmailResetPassword.get(token)
+        if not token_email:
+            return (
+                jsonify(
+                    {
+                        "message": "token invalid",
+                    }
+                ),
+                404,
+            )
+        if not (
+            user_token := await ResetPasswordDatabase.get(
+                "by_token_email", token=token, created_at=created_at
+            )
+        ):
+            return (
+                jsonify(
+                    {
+                        "message": "token invalid",
+                    }
+                ),
+                404,
+            )
+        if not (
+            user_data := await ResetPasswordDatabase.get(
+                "by_token_email", token=token, created_at=created_at
+            )
+        ):
+            return (
+                jsonify(
+                    {
+                        "message": "token invalid",
+                    }
+                ),
+                404,
+            )
+        user_me = self.user_seliazer.serialize(user_data.user)
+        token_data = self.token_serializer.serialize(user_data)
+        return (
+            jsonify(
+                {
+                    "message": "successfully get reset password information",
+                    "data": token_data,
+                    "user": user_me,
+                }
+            ),
+            200,
+        )
+
+    async def user_reset_password_verification(
+        self, token, new_password, confirm_password, timestamp
+    ):
+        from ..extensions import bcrypt
+
+        created_at = int(timestamp.timestamp())
+        errors = {}
+        if token is None or (isinstance(token, str) and token.strip() == ""):
+            errors.setdefault("token", []).append("IS_REQUIRED")
+        else:
+            if not isinstance(token, str):
+                errors.setdefault("token", []).append("MUST_TEXT")
+        if new_password is None or (
+            isinstance(new_password, str) and new_password.strip() == ""
+        ):
+            errors.setdefault("new_password", []).append("IS_REQUIRED")
+        else:
+            if not isinstance(new_password, str):
+                errors.setdefault("new_password", []).append("MUST_TEXT")
+        if confirm_password is None or (
+            isinstance(confirm_password, str) and confirm_password.strip() == ""
+        ):
+            errors.setdefault("confirm_password", []).append("IS_REQUIRED")
+        else:
+            if not isinstance(confirm_password, str):
+                errors.setdefault("confirm_password", []).append("MUST_TEXT")
+        if new_password != confirm_password and (
+            new_password
+            or (isinstance(new_password, str) and not new_password.isspace())
+        ):
+            errors.setdefault("password_match", []).append("IS_MISMATCH")
+        if isinstance(new_password, str) and new_password == confirm_password:
+            if len(new_password) > 64:
+                errors.setdefault("password_security", []).append("TOO_LONG")
+            if len(new_password) < 8:
+                errors.setdefault("password_security", []).append("TOO_SHORT")
+            if not re.search(r"[A-Z]", new_password):
+                errors.setdefault("password_security", []).append("NO_CAPITAL")
+            if not re.search(r"[a-z]", new_password):
+                errors.setdefault("password_security", []).append("NO_LOWERCASE")
+            if not re.search(r"[0-9]", new_password):
+                errors.setdefault("password_security", []).append("NO_NUMBER")
+            if not re.search(r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]", new_password):
+                errors.setdefault("password_security", []).append("NO_SYMBOL")
+            if not re.search(r"[A-Za-z]", new_password):
+                errors.setdefault("password_security", []).append("NO_LETTER")
+        if errors:
+            return jsonify({"errors": errors, "message": "validations error"}), 400
+        result_password = bcrypt.generate_password_hash(new_password).decode("utf-8")
+        if errors:
+            return jsonify({"errors": errors, "message": "validations error"}), 400
+        token_email = await TokenEmailResetPassword.get(token)
+        if not token_email:
+            return (
+                jsonify(
+                    {
+                        "message": "token invalid",
+                    }
+                ),
+                404,
+            )
+        if not (
+            user_token := await ResetPasswordDatabase.get(
+                "by_token_email", token=token, created_at=created_at
+            )
+        ):
+            return (
+                jsonify(
+                    {
+                        "message": "token invalid",
+                    }
+                ),
+                404,
+            )
+        if not (
+            user_data := await ResetPasswordDatabase.get(
+                "by_token_email", token=token, created_at=created_at
+            )
+        ):
+            return (
+                jsonify(
+                    {
+                        "message": "user not found",
+                    }
+                ),
+                404,
+            )
+        token_email = await TokenEmailResetPassword.get(token)
+        await ResetPasswordDatabase.delete(
+            "user_password_by_token_email",
+            token=user_data.token_email,
+            user_id=token_email["user_id"],
+            new_password=result_password,
+            created_at=created_at,
+        )
+        user_me = self.user_seliazer.serialize(user_data.user)
+        token_data = self.token_serializer.serialize(user_data)
+        return (
+            jsonify(
+                {
+                    "message": "successfully reset password",
+                    "data": token_data,
+                    "user": user_me,
+                }
+            ),
+            201,
+        )
+
+    async def user_reset_password_information(self, token, timestamp):
+        created_at = int(timestamp.timestamp())
+        errors = {}
+        if token is None or (isinstance(token, str) and token.strip() == ""):
+            errors.setdefault("token", []).append("IS_REQUIRED")
+        else:
+            if not isinstance(token, str):
+                errors.setdefault("token", []).append("MUST_TEXT")
+        if errors:
+            return jsonify({"errors": errors, "message": "validations error"}), 400
+        token_web = await TokenWebResetPassword.get(token)
+        if not token_web:
+            return (
+                jsonify(
+                    {
+                        "message": "token invalid",
+                    }
+                ),
+                404,
+            )
+        if not (
+            user_token := await ResetPasswordDatabase.get(
+                "by_token_web", token=token, created_at=created_at
+            )
+        ):
+            return (
+                jsonify(
+                    {
+                        "message": "token invalid",
+                    }
+                ),
+                404,
+            )
+        if not (
+            user_data := await ResetPasswordDatabase.get(
+                "by_token_web", token=token, created_at=created_at
+            )
+        ):
+            return (
+                jsonify(
+                    {
+                        "message": "user not found",
+                    }
+                ),
+                404,
+            )
+        user_me = self.user_seliazer.serialize(user_data.user)
+        token_data = self.token_serializer.serialize(
+            user_data, token_email_is_null=True
+        )
+        return (
+            jsonify(
+                {
+                    "message": "successfully get reset password information",
+                    "data": token_data,
+                    "user": user_me,
+                }
+            ),
+            200,
+        )
+
+    async def send_reset_password_email(self, email, timestamp):
+        errors = {}
+        if email is None or (isinstance(email, str) and email.strip() == ""):
+            errors.setdefault("email", []).append("IS_REQUIRED")
+        else:
+            if not isinstance(email, str):
+                errors.setdefault("email", []).append("MUST_TEXT")
+            try:
+                valid = validate_email(email)
+                email = valid.email
+            except:
+                errors.setdefault("email", []).append("IS_INVALID")
+        if errors:
+            return jsonify({"errors": errors, "message": "validations error"}), 400
+        if not (user_data := await UserDatabase.get("by_email", email=email)):
+            return (
+                jsonify({"message": "email not found"}),
+                404,
+            )
+        if user_data.provider != "auth_internal":
+            return (
+                jsonify(
+                    {
+                        "message": "email not found",
+                    }
+                ),
+                404,
+            )
+        expired_at = timestamp + datetime.timedelta(minutes=5)
+        token_web = await TokenWebResetPassword.insert(
+            f"{user_data.id}", int(timestamp.timestamp())
+        )
+        token_email = await TokenEmailResetPassword.insert(
+            f"{user_data.id}", int(timestamp.timestamp())
+        )
+        reset_password_data = await ResetPasswordDatabase.insert(
+            email,
+            token_web,
+            token_email,
+            int(timestamp.timestamp()),
+            int(expired_at.timestamp()),
+        )
+        SendEmail.send_email_reset_password(user_data, token_email)
+        user_me = self.user_seliazer.serialize(reset_password_data.user)
+        token_data = self.token_serializer.serialize(
+            reset_password_data, token_email_is_null=True
+        )
+        return (
+            jsonify(
+                {
+                    "message": "successfully send reset password email",
+                    "data": token_data,
+                    "user": user_me,
+                }
+            ),
+            201,
+        )

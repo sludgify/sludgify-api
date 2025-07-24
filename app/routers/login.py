@@ -1,0 +1,27 @@
+from flask import Blueprint, request
+from ..controllers import LoginController
+from ..utils import jwt_required
+
+login_router = Blueprint("login_router", __name__)
+login_controller = LoginController()
+
+
+@login_router.post("/sludgify/login")
+async def user_login():
+    data = request.json
+    timestamp = request.timestamp
+    email = data.get("email", "")
+    password = data.get("password", "")
+    provider = data.get("provider", "")
+    token = data.get("token", "")
+    return await login_controller.user_login(
+        provider, token, email, password, timestamp
+    )
+
+
+@login_router.post("/sludgify/logout")
+@jwt_required()
+async def user_logout():
+    user = request.user
+    token = request.token
+    return await login_controller.user_logout(user, token)
