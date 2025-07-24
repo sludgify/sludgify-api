@@ -99,24 +99,33 @@ def register_socketio_events(socketio, chat_data):
         if methode != "resume":
             msg = data.get("msg")
             if msg:
-                response_text.generate_report(msg)
-                if response_text.response:
-                    result = response_text.add_citations()
+                try:
+                    response_text.generate_report(msg)
+                    if response_text.response:
+                        result = response_text.add_citations()
 
-                    try:
-                        result_file = save_markdown_to_pdf(result)
-                        result_cd = cloudinary.uploader.upload(result_file)
-                        urls.append(result_cd["secure_url"])
-                    except Exception as e:
-                        print(f"Cloudinary upload error: {e}")
+                        try:
+                            result_file = save_markdown_to_pdf(result)
+                            result_cd = cloudinary.uploader.upload(result_file)
+                            urls.append(result_cd["secure_url"])
+                        except Exception as e:
+                            print(f"Cloudinary upload error: {e}")
 
+                        payload = {
+                            "username": username,
+                            "original_message": msg,
+                            "response_message": result,
+                            "links": urls,
+                        }
+
+                        save_and_emit(payload)
+                except TypeError:
                     payload = {
                         "username": username,
                         "original_message": msg,
-                        "response_message": result,
+                        "response_message": f"mohon maaf, saya tidak dapat menjawab pertanyaan ini.",
                         "links": urls,
                     }
-
                     save_and_emit(payload)
         elif methode == "resume":
             msg = data.get("msg")
