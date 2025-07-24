@@ -1,3 +1,4 @@
+import deep_translator.exceptions
 from flask_socketio import join_room, send, emit, disconnect
 from flask import request
 from ..utils import (
@@ -5,6 +6,7 @@ from ..utils import (
     save_markdown_to_pdf,
     GeminiFileResponseController,
     GeminiESGReporter,
+    Misc,
 )
 import cloudinary.uploader
 from ..models import UserModel, ChatHistoryModel
@@ -12,6 +14,7 @@ from ..config import google_api_key
 import datetime
 import os
 import traceback
+import deep_translator
 
 
 def register_socketio_events(socketio, chat_data):
@@ -120,10 +123,19 @@ def register_socketio_events(socketio, chat_data):
 
                         save_and_emit(payload)
                 except TypeError:
+                    try:
+                        country = Misc.get_country_code(data_user.country)
+                        result_country = country if country else "en"
+                        result_message = Misc.translator(
+                            "mohon maaf, saya tidak dapat menjawab pertanyaan ini.",
+                            result_country,
+                        )
+                    except deep_translator.exceptions.LanguageNotSupportedException:
+                        result_message = "Sorry, I can't answer this question."
                     payload = {
                         "username": username,
                         "original_message": msg,
-                        "response_message": f"mohon maaf, saya tidak dapat menjawab pertanyaan ini.",
+                        "response_message": result_message,
                         "links": urls,
                     }
                     save_and_emit(payload)
