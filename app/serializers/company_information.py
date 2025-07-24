@@ -28,6 +28,7 @@ class CompanyInformationSerializer(SerializerInterface):
             data["phone_number"] = company_information.phone_number
         if not address_is_null:
             data["address"] = company_information.address
-        if not company_name_is_null:
-            data["company_name"] = company_information.user.company_name
+        if not isinstance(company_information, CompanyNullModel):
+            if not company_name_is_null:
+                data["company_name"] = company_information.user.company_name
         return data
