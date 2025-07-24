@@ -5,6 +5,7 @@ from ..utils import TokenWebResetPassword, TokenEmailResetPassword, SendEmail
 import datetime
 import re
 from ..serializers import UserSerializer, TokenSerializer
+from ..config import web_short_me
 
 
 class ResetPasswordController:
@@ -282,7 +283,29 @@ class ResetPasswordController:
             int(timestamp.timestamp()),
             int(expired_at.timestamp()),
         )
-        SendEmail.send_email_reset_password(user_data, token_email)
+        SendEmail.send_email(
+            "Reset Password",
+            [user_data.email],
+            f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Reset</title>
+</head>
+<body>
+    <p>Hello {user_data.first_name} {user_data.last_name},</p>
+    <p>Someone has requested a link to reset password your account, and you can do this through the link below.</p>
+    <p>
+        <a href="{web_short_me}/reset-password?token={token_email}">
+            Click here to reset password your account
+        </a>
+    </p>
+    <p>If you didn't request this, please ignore this email.</p>
+</body>
+</html>
+                """,
+        )
         user_me = self.user_seliazer.serialize(reset_password_data.user)
         token_data = self.token_serializer.serialize(
             reset_password_data, token_email_is_null=True
