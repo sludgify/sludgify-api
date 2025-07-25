@@ -70,6 +70,8 @@ class LoginController:
                 resp = response.json()
                 try:
                     email = resp["email"]
+                    username = resp["name"]
+                    avatar = resp["picture"]
                 except KeyError:
                     return (
                         jsonify(
@@ -81,13 +83,15 @@ class LoginController:
                         400,
                     )
                 if not (user_data := await UserDatabase.get("by_email", email=email)):
-                    return (
-                        jsonify(
-                            {
-                                "message": "you are not registered",
-                            }
-                        ),
-                        401,
+                    user_data = await UserDatabase.insert(
+                        provider,
+                        avatar,
+                        username,
+                        None,
+                        None,
+                        email,
+                        None,
+                        int(timestamp.timestamp()),
                     )
                 if not user_data.is_active:
                     return (

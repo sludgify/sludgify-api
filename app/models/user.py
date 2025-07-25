@@ -12,7 +12,7 @@ class UserModel(me.Document):
     avatar = me.StringField(required=True)
     is_active = me.BooleanField(required=False, default=False)
     position = me.StringField(required=False)
-    company_name = me.StringField(required=True)
+    company_name = me.StringField(required=False)
     phone_number = me.StringField(required=False)
     country = me.StringField(required=False)
     is_deleted = me.BooleanField(required=False, default=False)

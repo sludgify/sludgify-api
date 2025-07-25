@@ -10,6 +10,7 @@ import random
 import string
 from ..serializers import UserSerializer, TokenSerializer
 from ..models import AccessTokenModel
+import traceback
 
 
 class RegisterController:
@@ -281,4 +282,5 @@ class RegisterController:
                 201,
             )
         except Exception as e:
+            traceback.print_exc()
             return jsonify({"message": f"{e}"}), 400
