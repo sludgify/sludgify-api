@@ -63,19 +63,44 @@ class TransactionPayment:
     async def create_transfer_async(
         self, bank, unique_code, amount, item_details, customer_details
     ):
-        params = {
-            "payment_type": "bank_transfer",
-            "transaction_details": {
-                "order_id": unique_code,
-                "gross_amount": amount,
-            },
-            "item_details": [
-                item_details,
-            ],
-            "bank_transfer": {
-                "bank": bank,
-            },
-            "customer_details": customer_details,
-        }
+        if bank == "permata":
+            params = {
+                "payment_type": bank,
+                "transaction_details": {
+                    "order_id": unique_code,
+                    "gross_amount": amount,
+                },
+            }
+        elif bank == "mandiri":
+            params = {
+                "payment_type": "echannel",
+                "transaction_details": {
+                    "order_id": unique_code,
+                    "gross_amount": amount,
+                },
+                "item_details": [
+                    item_details,
+                ],
+                "echannel": {
+                    "bill_info1": "Payment:",
+                    "bill_info2": item_details["name"],
+                },
+                "customer_details": customer_details,
+            }
+        else:
+            params = {
+                "payment_type": "bank_transfer",
+                "transaction_details": {
+                    "order_id": unique_code,
+                    "gross_amount": amount,
+                },
+                "item_details": [
+                    item_details,
+                ],
+                "bank_transfer": {
+                    "bank": bank,
+                },
+                "customer_details": customer_details,
+            }
         transaction = self.api.charge(params)
         return transaction

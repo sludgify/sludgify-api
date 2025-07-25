@@ -9,7 +9,7 @@ class TransactionPaymentModel(me.Document):
     expired_at = me.IntField(required=True)
     payment_method = me.StringField(required=True)
     payment_target = me.StringField(required=True)
-    is_remove = me.BooleanField(required=False, default=False)
+    status = me.StringField(required=False, default="pending")
 
     user = me.ReferenceField("UserModel", reverse_delete_rule=me.CASCADE)
 

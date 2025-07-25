@@ -14,7 +14,7 @@ class TransactionPaymentSerializer(SerializerInterface):
         expired_at_is_null: bool = False,
         payment_method_is_null: bool = False,
         payment_target_is_null: bool = False,
-        is_remove_is_null: bool = False,
+        status_is_null: bool = False,
         extra_fields: dict = None,
     ) -> dict:
         data = {}
@@ -34,8 +34,8 @@ class TransactionPaymentSerializer(SerializerInterface):
             data["payment_method"] = transcation_data.payment_method
         if not payment_target_is_null:
             data["payment_target"] = transcation_data.payment_target
-        if not is_remove_is_null:
-            data["is_remove"] = transcation_data.is_remove
+        if not status_is_null:
+            data["status"] = transcation_data.status
         if extra_fields:
             data.update(extra_fields)
         return data

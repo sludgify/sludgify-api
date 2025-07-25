@@ -37,28 +37,16 @@ class TransactionPaymentController:
                 ),
                 404,
             )
-        if user_data.payment_method == "bca":
-            data_transaction = self.transaction_payment_serializer.serialize(
-                user_data,
-                extra_fields={
-                    "status": (
-                        "success"
-                        if result["transaction_status"] == "settlement"
-                        else result["transaction_status"]
-                    ),
-                },
+        if not result["transaction_status"] == user_data.status:
+            await TransactionPaymentDatabase.update(
+                "status_by_unique_code",
+                unique_code=unique_code,
+                user_id=f"{user.id}",
+                status=result["transaction_status"],
             )
-        elif user_data.payment_method == "qris":
-            data_transaction = self.transaction_payment_serializer.serialize(
-                user_data,
-                extra_fields={
-                    "status": (
-                        "success"
-                        if result["transaction_status"] == "settlement"
-                        else result["transaction_status"]
-                    ),
-                },
-            )
+        data_transaction = self.transaction_payment_serializer.serialize(
+            user_data,
+        )
         return (
             jsonify(
                 {
@@ -96,7 +84,7 @@ class TransactionPaymentController:
                 ),
                 404,
             )
-        if user_data.is_remove:
+        if user_data.status == "cancel":
             return (
                 jsonify(
                     {
@@ -109,14 +97,14 @@ class TransactionPaymentController:
             result = await self.payment_midtrans.cancel_transaction_async(unique_code)
         except midtransclient.error_midtrans.MidtransAPIError:
             pass
-        user_data = await TransactionPaymentDatabase.update(
-            "is_cancle",
-            unique_code=unique_code,
-            user_id=f"{user.id}",
-        )
-        data_transaction = self.transaction_payment_serializer.serialize(
-            user_data, extra_fields={"status": result["transaction_status"]}
-        )
+        if not result["transaction_status"] == user_data.status:
+            await TransactionPaymentDatabase.update(
+                "status_by_unique_code",
+                unique_code=unique_code,
+                user_id=f"{user.id}",
+                status=result["transaction_status"],
+            )
+        data_transaction = self.transaction_payment_serializer.serialize(user_data)
         return (
             jsonify(
                 {
@@ -160,9 +148,61 @@ class TransactionPaymentController:
                 created_at,
                 int(expired_at.timestamp()),
             )
-        elif transaction_payment == "bca":
+        elif transaction_payment == "mandiri":
             user_payment = await self.payment_midtrans.create_transfer_async(
-                "bca",
+                transaction_payment,
+                unique_code,
+                amount,
+                {
+                    "id": unique_code,
+                    "price": amount,
+                    "quantity": 1,
+                    "name": f"top up credit sebesar {amount}",
+                },
+                {
+                    "username": f"{user.first_name} {user.last_name}",
+                    "email": user.email,
+                },
+            )
+            user_transaction = await TransactionPaymentDatabase.insert(
+                f"{user.id}",
+                f"top up credit dengan saldo {amount}",
+                unique_code,
+                transaction_payment,
+                f'{user_payment["biller_code"]} {user_payment["bill_key"]}',
+                amount,
+                created_at,
+                int(expired_at.timestamp()),
+            )
+        elif transaction_payment == "permata":
+            user_payment = await self.payment_midtrans.create_transfer_async(
+                transaction_payment,
+                unique_code,
+                amount,
+                {
+                    "id": unique_code,
+                    "price": amount,
+                    "quantity": 1,
+                    "name": f"top up credit sebesar {amount}",
+                },
+                {
+                    "username": f"{user.first_name} {user.last_name}",
+                    "email": user.email,
+                },
+            )
+            user_transaction = await TransactionPaymentDatabase.insert(
+                f"{user.id}",
+                f"top up credit dengan saldo {amount}",
+                unique_code,
+                transaction_payment,
+                f'{user_payment["permata_va_number"]}',
+                amount,
+                created_at,
+                int(expired_at.timestamp()),
+            )
+        else:
+            user_payment = await self.payment_midtrans.create_transfer_async(
+                transaction_payment,
                 unique_code,
                 amount,
                 {
@@ -187,7 +227,7 @@ class TransactionPaymentController:
                 int(expired_at.timestamp()),
             )
         data_transaction = self.transaction_payment_serializer.serialize(
-            user_transaction, {"status": "pending"}
+            user_transaction
         )
         if transaction_payment == "qris":
             return (
@@ -199,13 +239,12 @@ class TransactionPaymentController:
                 ),
                 201,
             )
-        elif transaction_payment == "bca":
-            return (
-                jsonify(
-                    {
-                        "message": "successfully create transaction",
-                        "data": data_transaction,
-                    }
-                ),
-                201,
-            )
+        return (
+            jsonify(
+                {
+                    "message": "successfully create transaction",
+                    "data": data_transaction,
+                }
+            ),
+            201,
+        )

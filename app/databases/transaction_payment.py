@@ -47,11 +47,12 @@ class TransactionPaymentDatabase(Database):
     async def update(category, **kwargs):
         unique_code = kwargs.get("unique_code")
         user_id = kwargs.get("user_id")
-        if category == "is_cancle":
+        status = kwargs.get("status")
+        if category == "status_by_unique_code":
             if user_data := UserModel.objects(id=user_id).first():
                 if transaction_payment_data := TransactionPaymentModel.objects(
                     unique_code=unique_code, user=user_data
                 ).first():
-                    transaction_payment_data.is_remove = True
+                    transaction_payment_data.status = status
                     transaction_payment_data.save()
                     return transaction_payment_data
