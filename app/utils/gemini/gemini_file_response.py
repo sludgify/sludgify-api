@@ -8,7 +8,7 @@ class GeminiFileCitationController:
     def __init__(self, api_key: str):
         self.api_key = api_key
 
-    async def get_response_text(
+    def get_response_text(
         self,
         file_paths: list[str],
         prompt: str,

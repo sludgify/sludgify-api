@@ -36,7 +36,7 @@ def create_app(test_config=None):
     bcrypt.init_app(app)
     db.init_app(app)
     mail.init_app(app)
-    limiter.init_app(app)
+    # limiter.init_app(app)
     socket_io.init_app(app)
     init_cloudinary()
 
