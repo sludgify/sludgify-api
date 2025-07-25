@@ -1,20 +1,20 @@
 from flask import jsonify
 from ..utils import TransactionPayment
+from ..serializers import TransactionPaymentSerializer
 from ..databases import TransactionPaymentDatabase
 from ..config import transaction_payment as TRANSACTION_PAYMENT
 import datetime
 import midtransclient
-from ..serializers import UserSerializer
 
 
 class TransactionPaymentController:
     def __init__(self):
-        self.user_seliazer = UserSerializer()
+        self.payment_midtrans = TransactionPayment()
+        self.transaction_payment_serializer = TransactionPaymentSerializer()
 
     async def get_transaction_carbon_credit(self, user, unique_code):
         try:
-            payment_midtrans = TransactionPayment()
-            result = await payment_midtrans.check_status(unique_code)
+            result = await self.payment_midtrans.check_status_async(unique_code)
         except midtransclient.error_midtrans.MidtransAPIError:
             return (
                 jsonify(
@@ -37,20 +37,33 @@ class TransactionPaymentController:
                 ),
                 404,
             )
-        user_me = self.user_seliazer.serialize(user)
+        if user_data.payment_method == "bca":
+            data_transaction = self.transaction_payment_serializer.serialize(
+                user_data,
+                extra_fields={
+                    "status": (
+                        "success"
+                        if result["transaction_status"] == "settlement"
+                        else result["transaction_status"]
+                    ),
+                },
+            )
+        elif user_data.payment_method == "qris":
+            data_transaction = self.transaction_payment_serializer.serialize(
+                user_data,
+                extra_fields={
+                    "status": (
+                        "success"
+                        if result["transaction_status"] == "settlement"
+                        else result["transaction_status"]
+                    ),
+                },
+            )
         return (
             jsonify(
                 {
                     "message": "successfully get transaction",
-                    "data": {
-                        "unique_code": user_data.unique_code,
-                        "amount": user_data.amount,
-                        "created_at": user_data.created_at,
-                        "expired_at": user_data.expired_at,
-                        "description": user_data.description,
-                        "status": result["transaction_status"],
-                    },
-                    "user": user_me,
+                    "data": data_transaction,
                 }
             ),
             200,
@@ -58,8 +71,8 @@ class TransactionPaymentController:
 
     async def cancle_transaction_carbon_credit(self, user, unique_code):
         try:
-            payment_midtrans = TransactionPayment()
-            result = await payment_midtrans.check_status(unique_code)
+
+            result = await self.payment_midtrans.check_status_async(unique_code)
         except midtransclient.error_midtrans.MidtransAPIError:
             return (
                 jsonify(
@@ -92,26 +105,23 @@ class TransactionPaymentController:
                 ),
                 409,
             )
-        await TransactionPaymentDatabase.update(
+        try:
+            result = await self.payment_midtrans.cancel_transaction_async(unique_code)
+        except midtransclient.error_midtrans.MidtransAPIError:
+            pass
+        user_data = await TransactionPaymentDatabase.update(
             "is_cancle",
             unique_code=unique_code,
             user_id=f"{user.id}",
         )
-        result = await payment_midtrans.cancel_transaction(unique_code)
-        user_me = self.user_seliazer.serialize(user)
+        data_transaction = self.transaction_payment_serializer.serialize(
+            user_data, extra_fields={"status": result["transaction_status"]}
+        )
         return (
             jsonify(
                 {
                     "message": "successfully cancle transaction",
-                    "data": {
-                        "unique_code": user_data.unique_code,
-                        "amount": user_data.amount,
-                        "created_at": user_data.created_at,
-                        "expired_at": user_data.expired_at,
-                        "description": user_data.description,
-                        "status": result["transaction_status"],
-                    },
-                    "user": user_me,
+                    "data": data_transaction,
                 }
             ),
             201,
@@ -120,8 +130,8 @@ class TransactionPaymentController:
     async def transaction_carbon_credit(
         self, user, amount, transaction_payment, timestamp
     ):
-        payment_midtrans = TransactionPayment()
         errors = {}
+        transaction_payment = transaction_payment.lower()
         if transaction_payment not in TRANSACTION_PAYMENT.split(", "):
             errors.setdefault("transaction_payment", []).append("IS_INVALID")
         if amount == None:
@@ -133,22 +143,25 @@ class TransactionPaymentController:
                 errors.setdefault("amount", []).append("TOO_LOW")
         if errors:
             return jsonify({"errors": errors, "message": "validations error"}), 400
-        unique_code = await payment_midtrans.create_code()
+        unique_code = await self.payment_midtrans.create_code_async()
         created_at = int(timestamp.timestamp())
         expired_at = timestamp + datetime.timedelta(minutes=5)
-        user_transaction = await TransactionPaymentDatabase.insert(
-            f"{user.id}",
-            f"top up credit dengan saldo {amount}",
-            unique_code,
-            amount,
-            created_at,
-            int(expired_at.timestamp()),
-        )
-        user_me = self.user_seliazer.serialize(user)
         if transaction_payment == "qris":
-            user_payment = await payment_midtrans.create_qris(unique_code, amount)
+            user_payment = await self.payment_midtrans.create_qris_async(
+                unique_code, amount
+            )
+            user_transaction = await TransactionPaymentDatabase.insert(
+                f"{user.id}",
+                f"top up credit dengan saldo {amount}",
+                unique_code,
+                transaction_payment,
+                user_payment["actions"][0]["url"],
+                amount,
+                created_at,
+                int(expired_at.timestamp()),
+            )
         elif transaction_payment == "bca":
-            user_payment = await payment_midtrans.create_transfer(
+            user_payment = await self.payment_midtrans.create_transfer_async(
                 "bca",
                 unique_code,
                 amount,
@@ -158,27 +171,30 @@ class TransactionPaymentController:
                     "quantity": 1,
                     "name": f"top up credit sebesar {amount}",
                 },
-                {"username": user.username, "email": user.email},
+                {
+                    "username": f"{user.first_name} {user.last_name}",
+                    "email": user.email,
+                },
             )
+            user_transaction = await TransactionPaymentDatabase.insert(
+                f"{user.id}",
+                f"top up credit dengan saldo {amount}",
+                unique_code,
+                transaction_payment,
+                user_payment["va_numbers"][0]["va_number"],
+                amount,
+                created_at,
+                int(expired_at.timestamp()),
+            )
+        data_transaction = self.transaction_payment_serializer.serialize(
+            user_transaction, {"status": "pending"}
+        )
         if transaction_payment == "qris":
             return (
                 jsonify(
                     {
                         "message": "successfully create transaction",
-                        "data": {
-                            "unique_code": user_transaction.unique_code,
-                            "amount": amount,
-                            "created_at": user_transaction.created_at,
-                            "expired_at": user_transaction.expired_at,
-                            "description": user_transaction.description,
-                        },
-                        "payment": {
-                            "url_qris": user_payment["actions"][0]["url"],
-                            "transaction_id": user_payment["transaction_id"],
-                            "expiry_time": user_payment["expiry_time"],
-                            "status": user_payment["transaction_status"],
-                        },
-                        "user": user_me,
+                        "data": data_transaction,
                     }
                 ),
                 201,
@@ -188,20 +204,7 @@ class TransactionPaymentController:
                 jsonify(
                     {
                         "message": "successfully create transaction",
-                        "data": {
-                            "unique_code": user_transaction.unique_code,
-                            "amount": amount,
-                            "created_at": user_transaction.created_at,
-                            "expired_at": user_transaction.expired_at,
-                            "description": user_transaction.description,
-                        },
-                        "payment": {
-                            "va_number": user_payment["va_numbers"][0]["va_number"],
-                            "order_id": user_payment["order_id"],
-                            "expiry_time": user_payment["expiry_time"],
-                            "status": user_payment["transaction_status"],
-                        },
-                        "user": user_me,
+                        "data": data_transaction,
                     }
                 ),
                 201,

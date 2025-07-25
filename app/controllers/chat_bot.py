@@ -47,7 +47,9 @@ class ChatBotController:
                 urls,
                 user,
             )
-            socket_io.emit("message_with_links", payload)
+            socket_io.emit(
+                "message_with_links", payload, room=room, namespace="/chat-bot"
+            )
             chat_data = self.chat_history_serializer.serialize(result_chat_history)
             return (
                 jsonify({"data": chat_data, "message": "successfully send message"}),

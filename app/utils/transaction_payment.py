@@ -23,7 +23,7 @@ class TransactionPayment:
             nilai = int(nilai)
         return nilai
 
-    async def create_code(self):
+    async def create_code_async(self):
         timestamp = int(time.time())
         random_string = "".join(
             random.choices(string.ascii_uppercase + string.digits, k=6)
@@ -31,15 +31,19 @@ class TransactionPayment:
         transaction_code = f"TX{timestamp}{random_string}"
         return transaction_code
 
-    async def check_status(self, unique_code):
+    async def check_status_async(self, unique_code):
         transaction_status = self.api.transactions.status(unique_code)
         return transaction_status
 
-    async def cancel_transaction(self, unique_code):
+    def check_status_sync(self, unique_code):
+        transaction_status = self.api.transactions.status(unique_code)
+        return transaction_status
+
+    async def cancel_transaction_async(self, unique_code):
         cancel_response = self.api.transactions.cancel(unique_code)
         return cancel_response
 
-    async def create_qris(self, unique_code, amount):
+    async def create_qris_async(self, unique_code, amount):
         order_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S +0700")
         params = {
             "payment_type": "gopay",
@@ -56,7 +60,7 @@ class TransactionPayment:
         transaction = self.api.charge(params)
         return transaction
 
-    async def create_transfer(
+    async def create_transfer_async(
         self, bank, unique_code, amount, item_details, customer_details
     ):
         params = {

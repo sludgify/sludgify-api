@@ -7,6 +7,7 @@ from ..utils import (
     GeminiFileResponseController,
     GeminiESGReporter,
     Misc,
+    SocketEmit,
 )
 import cloudinary.uploader
 from ..models import UserModel, ChatHistoryModel
@@ -17,23 +18,22 @@ import traceback
 import deep_translator
 
 
-def register_socketio_events(socketio, chat_data):
+def register_chat_bot_socketio_events(socketio, chat_data):
     response_text = GeminiESGReporter(google_api_key)
     file_responder = GeminiFileResponseController(google_api_key)
 
-    @socketio.on("connect")
+    @socketio.on("connect", namespace="/chat-bot")
     def handle_connect():
         print(f"User connected from IP: {request.remote_addr}")
 
-    @socketio.on("disconnect")
+    @socketio.on("disconnect", namespace="/chat-bot")
     def handle_disconnect():
         print(f"User disconnected from IP: {request.remote_addr}")
 
-    @socketio.on("join")
+    @socketio.on("join", namespace="/chat-bot")
     def handle_join(data):
         token = data.get("token")
-        room = data.get("room")
-        if not token or not room:
+        if not token:
             disconnect()
             return
 
@@ -47,6 +47,7 @@ def register_socketio_events(socketio, chat_data):
             disconnect()
             return
 
+        room = f"{data_user.id}"
         username = f"{data_user.first_name} {data_user.last_name}"
         join_room(room)
 
@@ -65,7 +66,7 @@ def register_socketio_events(socketio, chat_data):
         emit("chat_history", chat_list, room=request.sid)
         send(f"{username} joined the room.", room=room)
 
-    @socketio.on("message")
+    @socketio.on("message", namespace="/chat-bot")
     def handle_message(data):
         token = data.get("token", "")
         user = AuthJwt.verify_token_sync(token)
@@ -82,22 +83,6 @@ def register_socketio_events(socketio, chat_data):
         username = f"{data_user.first_name} {data_user.last_name}"
         urls = []
 
-        def save_and_emit(payload):
-            ChatHistoryModel(
-                room=room,
-                original_message=payload["original_message"],
-                response_message=payload["response_message"],
-                links=payload["links"],
-                user=data_user,
-                created_at=int(datetime.datetime.now().timestamp()),
-            ).save()
-
-            if room not in chat_data:
-                chat_data[room] = []
-            chat_data[room].append(payload)
-
-            emit("message_with_links", payload, room=room)
-
         methode = data.get("methode")
         if methode != "resume":
             msg = data.get("msg")
@@ -105,7 +90,7 @@ def register_socketio_events(socketio, chat_data):
                 try:
                     response_text.generate_report(msg)
                     if response_text.response:
-                        result = response_text.add_citations()
+                        result = response_text._add_citations()
 
                         try:
                             result_file = save_markdown_to_pdf(result)
@@ -120,8 +105,7 @@ def register_socketio_events(socketio, chat_data):
                             "response_message": result,
                             "links": urls,
                         }
-
-                        save_and_emit(payload)
+                        SocketEmit.chat_emit(payload, data_user, room, chat_data)
                 except TypeError:
                     try:
                         country = Misc.get_country_code(data_user.country)
@@ -138,7 +122,7 @@ def register_socketio_events(socketio, chat_data):
                         "response_message": result_message,
                         "links": urls,
                     }
-                    save_and_emit(payload)
+                    SocketEmit.chat_emit(payload, data_user, room, chat_data)
         elif methode == "resume":
             msg = data.get("msg")
             pdf_base64 = data.get("pdf_base64")
@@ -183,8 +167,7 @@ def register_socketio_events(socketio, chat_data):
                     "response_message": full_msg,
                     "links": urls,
                 }
-
-                save_and_emit(payload)
+                SocketEmit.chat_emit(payload, data_user, room, chat_data)
 
             except Exception as e:
                 print(f"Error: {e}")

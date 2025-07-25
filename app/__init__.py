@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask
 from .celery_app import celery_init_app
 
 
@@ -48,15 +48,11 @@ def create_app(test_config=None):
     from .routers import register_blueprints
     from .error_handlers import register_error_handlers
     from .middlewares import register_middlewares
-    from .sockets import register_socketio_events
+    from .sockets import register_socket_io
 
-    register_socketio_events(socket_io, chat_data)
+    register_socket_io(socket_io, chat_data)
     register_blueprints(app)
     register_error_handlers(app)
     register_middlewares(app)
-
-    @app.route("/chat")
-    def chat():
-        return render_template("index.html")
 
     return app

@@ -1,5 +1,9 @@
 import datetime
-from ..models import AccountActiveModel, ResetPasswordModel, OtpEmailModel
+from ..models import (
+    AccountActiveModel,
+    ResetPasswordModel,
+    OtpEmailModel,
+)
 from celery.schedules import crontab
 
 
