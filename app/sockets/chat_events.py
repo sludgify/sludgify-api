@@ -4,7 +4,7 @@ from flask import request
 from ..utils import (
     AuthJwt,
     save_markdown_to_pdf,
-    GeminiFileResponseController,
+    GeminiFileCitationController,
     GeminiESGReporter,
     Misc,
     SocketEmit,
@@ -12,15 +12,16 @@ from ..utils import (
 import cloudinary.uploader
 from ..models import UserModel, ChatHistoryModel
 from ..config import google_api_key
-import datetime
+import base64
 import os
 import traceback
 import deep_translator
+import tempfile
 
 
 def register_chat_bot_socketio_events(socketio, chat_data):
     response_text = GeminiESGReporter(google_api_key)
-    file_responder = GeminiFileResponseController(google_api_key)
+    file_responder = GeminiFileCitationController(google_api_key)
 
     @socketio.on("connect", namespace="/chat-bot")
     def handle_connect():
@@ -83,8 +84,8 @@ def register_chat_bot_socketio_events(socketio, chat_data):
         username = f"{data_user.first_name} {data_user.last_name}"
         urls = []
 
-        methode = data.get("methode")
-        if methode != "resume":
+        method = data.get("method")
+        if method != "resume":
             msg = data.get("msg")
             if msg:
                 try:
@@ -123,35 +124,53 @@ def register_chat_bot_socketio_events(socketio, chat_data):
                         "links": urls,
                     }
                     SocketEmit.chat_emit(payload, data_user, room, chat_data)
-        elif methode == "resume":
+        elif method == "resume":
             msg = data.get("msg")
-            pdf_base64 = data.get("pdf_base64")
+            pdf_base64_list = data.get("pdf_base64_list", [])
+            urls = []
 
-            def validate_and_save_pdf(base64_string: str) -> str:
-                import base64
-                import tempfile
+            def validate_and_save_pdf(base64_string: str) -> str | None:
+                try:
+                    file_data = base64.b64decode(base64_string)
+                    if file_data[:5] != b"%PDF-":
+                        return None
+                    with tempfile.NamedTemporaryFile(
+                        delete=False, suffix=".pdf"
+                    ) as temp_file:
+                        temp_file.write(file_data)
+                        return temp_file.name
+                except Exception as e:
+                    return None
 
-                file_data = base64.b64decode(base64_string)
-                if file_data[:5] != b"%PDF-":
-                    raise ValueError("File bukan PDF yang valid.")
-
-                with tempfile.NamedTemporaryFile(
-                    delete=False, suffix=".pdf"
-                ) as temp_file:
-                    temp_file.write(file_data)
-                    return temp_file.name
-
-            pdf_path = None
+            temp_files = []
 
             try:
-                pdf_path = validate_and_save_pdf(pdf_base64)
-                print(f"File valid disimpan di: {pdf_path}")
+                for base64_str in pdf_base64_list:
+                    if base64_str.strip():
+                        file_path = validate_and_save_pdf(base64_str)
+                        if file_path:
+                            temp_files.append(file_path)
 
-                result = file_responder.get_response_from_file(
-                    pdf_path, "Tolong ringkas isi file ini dalam 3 kalimat."
+                if not temp_files:
+                    SocketEmit.chat_emit(
+                        {
+                            "username": username,
+                            "original_message": msg,
+                            "response_message": "Tidak ada file PDF valid untuk diringkas.",
+                            "links": [],
+                        },
+                        data_user,
+                        room,
+                        chat_data,
+                    )
+                    return
+
+                result = file_responder.get_response_text(
+                    file_paths=temp_files,
+                    prompt="Tolong ringkas isi file ini dalam 3 kalimat.",
                 )
 
-                full_msg = f"{'\n'.join(i.text for i in result)}"
+                full_msg = result.strip()
 
                 try:
                     result_file = save_markdown_to_pdf(full_msg)
@@ -159,7 +178,7 @@ def register_chat_bot_socketio_events(socketio, chat_data):
                     urls.append(result_cd["secure_url"])
                 except Exception as e:
                     traceback.print_exc()
-                    print(f"Cloudinary upload error: {e}")
+                    print(f"[Cloudinary Upload Error] {e}")
 
                 payload = {
                     "username": username,
@@ -167,11 +186,23 @@ def register_chat_bot_socketio_events(socketio, chat_data):
                     "response_message": full_msg,
                     "links": urls,
                 }
+
                 SocketEmit.chat_emit(payload, data_user, room, chat_data)
 
             except Exception as e:
-                print(f"Error: {e}")
+                SocketEmit.chat_emit(
+                    {
+                        "username": username,
+                        "original_message": msg,
+                        "response_message": f"Terjadi kesalahan saat meresume file: {e}",
+                        "links": [],
+                    },
+                    data_user,
+                    room,
+                    chat_data,
+                )
 
             finally:
-                if pdf_path and os.path.exists(pdf_path):
-                    os.remove(pdf_path)
+                for path in temp_files:
+                    if path and os.path.exists(path):
+                        os.remove(path)
