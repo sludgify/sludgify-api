@@ -1,66 +1,53 @@
 from google import genai
 from google.genai import types
-from tenacity import retry, wait_exponential, stop_after_attempt, RetryError
 
 
-class GeminiESGReporter:
-    def __init__(self, api_key: str, model: str = "gemini-2.0-flash"):
-        """Inisialisasi Gemini client dan konfigurasi dengan Google Search tool."""
-        self.client = genai.Client(api_key=api_key)
+class GeminiCitationGenerator:
+    def __init__(self, api_key: str, model: str = "gemini-2.5-flash"):
+        self.api_key = api_key
         self.model = model
+        self.client = genai.Client(api_key=self.api_key)
+
+        # Aktifkan Google Search grounding tool
         self.config = types.GenerateContentConfig(
             tools=[types.Tool(google_search=types.GoogleSearch())]
         )
-        self.response: types.GenerateContentResponse | None = None
 
-    @retry(
-        wait=wait_exponential(multiplier=1, min=2, max=10), stop=stop_after_attempt(5)
-    )
-    def _generate_content_with_retry(
-        self, prompt: str
-    ) -> types.GenerateContentResponse:
-        """Mencoba menghasilkan konten dengan retry logic untuk meningkatkan keandalan."""
-        return self.client.models.generate_content(
-            model=self.model, contents=prompt, config=self.config
+    def is_valid_prompt(self, prompt: str) -> bool:
+        return (
+            isinstance(prompt, str) and not prompt.isspace() and len(prompt.strip()) > 0
         )
 
-    def generate_report(self, prompt: str) -> str | None:
+    def get_response_text(self, prompt: str) -> str | None:
         """
-        Menghasilkan laporan ESG berdasarkan prompt yang diberikan.
-        Mengembalikan teks mentah (tanpa citation) atau None jika gagal.
+        Menghasilkan teks dari prompt menggunakan Gemini dan menambahkan citation jika tersedia.
+        Return:
+            - str: teks hasil respons dengan citation (jika ada)
+            - None: jika gagal atau prompt tidak valid
         """
+        if not self.is_valid_prompt(prompt):
+            print("❌ Prompt tidak valid. Harus berupa string dan tidak kosong.")
+            return None
+
         try:
-            self.response = self._generate_content_with_retry(prompt)
-            return self.response.text
-        except RetryError as e:
-            print("❌ Gagal mendapatkan respon setelah beberapa kali percobaan.")
-            print(f"📄 Detail error: {e}")
-            return None
-
-    def generate_report_with_citations(self, prompt: str) -> str | None:
-        """
-        Menghasilkan laporan ESG dan menambahkan citation/link sumber.
-        """
-        text = self.generate_report(prompt)
-        if text is None:
-            return None
-        return self._add_citations()
-
-    def _add_citations(self) -> str:
-        """Menambahkan link citation dari grounding_metadata ke dalam teks respon."""
-        if not self.response:
-            raise ValueError(
-                "No response generated. Please run generate_report() first."
+            response = self.client.models.generate_content(
+                model=self.model, contents=prompt, config=self.config
             )
 
-        candidate = self.response.candidates[0]
-        text = (
-            candidate.content.parts[0].text
-            if candidate.content.parts
-            else self.response.text
-        )
+            return self._add_citations(response)
 
-        metadata = candidate.grounding_metadata
+        except Exception as e:
+            print(f"❌ Error saat memanggil Gemini API: {e}")
+            return None
+
+    def _add_citations(self, response) -> str:
+        if not response.candidates:
+            return getattr(response, "text", "")
+
+        candidate = response.candidates[0]
+        metadata = getattr(candidate, "grounding_metadata", None)
+        text = candidate.content.parts[0].text if candidate.content.parts else ""
+
         if not metadata or not metadata.grounding_supports:
             return text
 
@@ -71,13 +58,14 @@ class GeminiESGReporter:
             supports, key=lambda s: s.segment.end_index, reverse=True
         ):
             end_index = support.segment.end_index
-            links = []
+            citation_links = []
+
             for i in support.grounding_chunk_indices:
                 if i < len(chunks) and chunks[i].web and chunks[i].web.uri:
-                    links.append(f"[{i + 1}]({chunks[i].web.uri})")
+                    citation_links.append(f"[{i + 1}]({chunks[i].web.uri})")
 
-            if links:
-                citation = " " + ", ".join(links)
-                text = text[:end_index] + citation + text[end_index:]
+            if citation_links:
+                citation_str = " " + ", ".join(citation_links)
+                text = text[:end_index] + citation_str + text[end_index:]
 
         return text

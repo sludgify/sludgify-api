@@ -10,6 +10,7 @@ def create_app(test_config=None):
 
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
+    global app
     app = Flask(__name__, instance_relative_config=True)
 
     app.config.from_object(Config)

@@ -1,6 +1,6 @@
 from ..databases import ChatHistoryDatabase
 from flask import jsonify
-from ..utils import save_markdown_to_pdf, GeminiESGReporter
+from ..utils import save_markdown_to_pdf, GeminiCitationGenerator
 from ..config import google_api_key
 import cloudinary.uploader
 from ..extensions import socket_io
@@ -10,7 +10,7 @@ from ..serializers import ChatHistorySerializer
 class ChatBotController:
     def __init__(self):
         self.chat_history_serializer = ChatHistorySerializer()
-        self.response_text = GeminiESGReporter(google_api_key)
+        self.response_text = GeminiCitationGenerator(google_api_key)
 
     async def send_message(self, user, message, timestamp):
         room = f"{user.id}"

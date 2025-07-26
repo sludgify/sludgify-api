@@ -5,7 +5,7 @@ from ..utils import (
     AuthJwt,
     save_markdown_to_pdf,
     GeminiFileCitationController,
-    GeminiESGReporter,
+    GeminiCitationGenerator,
     Misc,
     SocketEmit,
 )
@@ -20,7 +20,7 @@ import tempfile
 
 
 def register_chat_bot_socketio_events(socketio, chat_data):
-    response_text = GeminiESGReporter(google_api_key)
+    response_text = GeminiCitationGenerator(google_api_key)
     file_responder = GeminiFileCitationController(google_api_key)
 
     @socketio.on("connect", namespace="/chat-bot")
@@ -89,8 +89,8 @@ def register_chat_bot_socketio_events(socketio, chat_data):
             msg = data.get("msg")
             if msg:
                 try:
-                    response_text.generate_report(msg)
-                    if response_text.response:
+                    result_text = response_text.get_response_text(msg)
+                    if result_text:
                         result = response_text._add_citations()
 
                         try:

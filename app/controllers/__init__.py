@@ -10,4 +10,5 @@ from .sludgify_analysis import *
 from .transaction_payment import *
 from .company_information import *
 from .calculator import *
+from .download import *
 from .chat_bot import *
